@@ -4,7 +4,7 @@ import { documentEmbeddings } from "../embeddings/embeddings";
 import { Document } from "@langchain/core/documents";
 
 const pinecone = new PineconeClient({
-    apiKey: process.env.PINECONE_API_KEY!
+    apiKey: process.env.PINECONE_API_KEY! // non null assertion
 });
 
 const pineconeIndex = pinecone.Index("github-repo-explainer");

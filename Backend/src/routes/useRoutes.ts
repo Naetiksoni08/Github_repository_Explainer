@@ -1,13 +1,11 @@
-import express from "express";
-import Router = require("express");
+import { Router } from "express"
+import ingestRouter from "./Ingest.router"
+import chatRouter from "./Chat.router"
 
-// router.get("/", (req, res) => {
-//     res.send("User GET route working");
-// });
 
-// router.post("/create", (req, res) => {
-//     res.send("User POST route working");
-// });
+const router = Router();
+router.use(ingestRouter)
+router.use(chatRouter)
 
 
 export default Router
