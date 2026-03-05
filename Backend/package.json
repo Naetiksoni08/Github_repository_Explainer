@@ -17,17 +17,25 @@
     "@langchain/openai": "^1.2.11",
     "@langchain/pinecone": "^1.0.1",
     "@pinecone-database/pinecone": "^7.1.0",
+    "@types/passport-github2": "^1.2.9",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "ignore": "^7.0.5",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.3",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "passport": "^0.7.0",
+    "passport-github2": "^0.1.12",
+    "passport-google-oauth20": "^2.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.3.2",
+    "@types/passport": "^1.0.17",
+    "@types/passport-google-oauth20": "^2.0.17",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
