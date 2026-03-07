@@ -25,6 +25,9 @@
 
 .logo-area {
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     margin-bottom: 40px;
 }
 
