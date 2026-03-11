@@ -4,9 +4,8 @@ import llm from "..";
 
 async function SummarizerAgent(sessionId: string, cleanquery: string): Promise<string> {
     const getHistory = await getMessages(sessionId);
-    const retrieverInstance = await retriever()
-    const chunks = await retrieverInstance.invoke(cleanquery)
-    const chunkContent = chunks.map(doc => doc.pageContent).join("\n\n")
+    const chunks = await retriever(cleanquery)
+    const chunkContent = chunks.map((doc: any) => doc.pageContent).join("\n\n")
 
     const prompt = `You are an expert summarizer.
 

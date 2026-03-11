@@ -127,13 +127,13 @@
 }
 
 .input-area input:focus {
-    border-color: rgba(201, 109, 63, 0.4);
+    border-color: rgba(0, 0, 0, 0.4);
 }
 
 .input-area button {
-    background: #c96d3f;
-    border: none;
-    border-radius: 10px;
+    background: #2f2f2f;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius:15px;
     padding: 14px 20px;
     color: white;
     cursor: pointer;
@@ -142,8 +142,13 @@
 }
 
 .input-area button:hover {
-    background: #a85530;
+    background: #282828;
 }
+
+.input-area button:focus {
+    border-color: rgba(0, 0, 0, 0.4);
+}
+
 
 .empty-state {
     display: flex;

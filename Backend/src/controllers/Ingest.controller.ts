@@ -7,11 +7,13 @@ import ingest from "../AI/ingestion";
 
 const IngestController = async (req: Request, res: Response) => {
     try {
+        console.log("Ingest started:", req.body)
         const { repoUrl } = req.body
         await ingest(repoUrl)
         success(res, { repoUrl }, "Repository ingested successfully")
-    } catch(err) {
-        error(res, err)
+    } catch (err) {
+        console.log("Ingest error:", err) 
+        error(res, "Something went Wrong")
     }
 }
 

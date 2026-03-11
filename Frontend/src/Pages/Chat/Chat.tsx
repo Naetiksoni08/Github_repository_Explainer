@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import "./Chat.css"
 import { FiEdit } from "react-icons/fi";
-import toast from 'react-hot-toast';
+import toast from 'react-hot-toast'
 import api from '../../utils/axios';
 
 const Chat = () => {
@@ -22,6 +22,11 @@ const Chat = () => {
         if (storedUser) setUser(JSON.parse(storedUser))
     }, [])
 
+    const messagesEndRef = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [messages])
+
 
     const handleSend = async () => {
         if (!input.trim()) return
@@ -36,7 +41,7 @@ const Chat = () => {
             if (!repoIngested) {
                 //Ingestion Api Call
                 const response = await api.post(
-                    'http://localhost:5001/api/ingest',
+                    '/api/ingest',
                     { repoUrl: input },
                     { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
                 )
@@ -47,6 +52,9 @@ const Chat = () => {
                     const aiMessage = { role: "assistant", content: "Repository analyzed! Ask me anything about the codebase." }
                     setMessages(prev => [...prev, aiMessage])
                     toast.success("Repository ready!")
+                    setTimeout(() => {
+                        setMessages(prev => prev.filter(msg => msg.content !== aiMessage.content))
+                       }, 8000);
                 }
 
             } else {
@@ -60,8 +68,9 @@ const Chat = () => {
                 setMessages(prev => [...prev, Aimessage]);
 
             }
-        } catch (error) {
-            toast.error("Something Went Wrong")
+        } catch (error: any) {
+            console.log(error) 
+            toast.error(error?.response?.data?.message || "Something Went Wrong")
         } finally {
             setLoading(false);
         }
@@ -102,7 +111,7 @@ const Chat = () => {
 
                     {messages.length === 0 ? (
                         <div className="empty-state">
-                             <h2>Hey {user?.name?.split(" ")[0]}, 👋</h2>
+                            <h2>Hey {user?.name?.split(" ")[0]}, 👋</h2>
                             <h2>What repo would you like to analyze?</h2>
                             <p>Paste a GitHub URL below to get started</p>
                         </div>
@@ -122,7 +131,7 @@ const Chat = () => {
                 </div>
                 {/* Input Area */}
                 <div className="input-area">
-                    <input
+                    <input onKeyDown={(e) => e.key === "Enter" && handleSend()}
                         type="text"
                         placeholder={repoIngested ? "Ask anything about the repo..." : "Paste GitHub URL to get started..."}
                         value={input}

@@ -1,15 +1,13 @@
-import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
-import { TaskType } from "@google/generative-ai";
+import { CohereEmbeddings } from "@langchain/cohere"
 
-const documentEmbeddings = new GoogleGenerativeAIEmbeddings({
-    model: "text-embedding-004",
-    taskType: TaskType.RETRIEVAL_DOCUMENT,
+const documentEmbeddings = new CohereEmbeddings({
+  apiKey: process.env.COHERE_API_KEY,
+  model: "embed-english-v3.0"
 })
 
-const queryEmbeddings = new GoogleGenerativeAIEmbeddings({ 
-    model: "text-embedding-004",
-    taskType: TaskType.RETRIEVAL_QUERY
+const queryEmbeddings = new CohereEmbeddings({
+  apiKey: process.env.COHERE_API_KEY,
+  model: "embed-english-v3.0"
 })
 
-
-export { documentEmbeddings, queryEmbeddings };
+export { documentEmbeddings, queryEmbeddings }

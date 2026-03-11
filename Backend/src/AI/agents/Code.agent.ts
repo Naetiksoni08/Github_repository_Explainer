@@ -3,12 +3,11 @@ import retriever from "../retriever/retriever";
 import llm from "..";
 
 async function CodeAnalyzerAgent(sessionId: string, cleanquery: string): Promise<string> {
-    const getHistory = await getMessages(sessionId);
-    const retrieverInstance = await retriever()
-    const chunks = await retrieverInstance.invoke(cleanquery)
-    const chunkContent = chunks.map(doc => doc.pageContent).join("\n\n")
+  const getHistory = await getMessages(sessionId);
+  const chunks = await retriever(cleanquery);
+  const chunkContent = chunks.map((doc: any) => doc.pageContent).join("\n\n")
 
-    const prompt = `You are a senior software engineer specializing in code analysis.
+  const prompt = `You are a senior software engineer specializing in code analysis.
 
     CHAT HISTORY:
     ${JSON.stringify(getHistory)}
@@ -27,8 +26,8 @@ async function CodeAnalyzerAgent(sessionId: string, cleanquery: string): Promise
     Return a detailed, well-structured code analysis.`
 
 
-    const response = await llm.invoke(prompt);
-    return response.content as string;
+  const response = await llm.invoke(prompt);
+  return response.content as string;
 
 }
 

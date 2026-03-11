@@ -18,7 +18,7 @@ function AuthCallback() {
             localStorage.setItem("token", token)
             localStorage.setItem("user", user)
             toast.success(`Welcome ${parsedUser.name}`);
-            navigate("/home");
+            setTimeout(() => navigate("/home"), 500)
         } else {
             navigate("/auth");
         }

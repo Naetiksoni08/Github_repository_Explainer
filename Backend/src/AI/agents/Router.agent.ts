@@ -25,15 +25,16 @@ Query: ${cleanquery}`
 
     const intentrespone = await llm.invoke(intentdetector);
     const intent = intentrespone.content as Intent;
+    const cleanIntent = intent.trim().replace(/['"]/g, "") as Intent
 
 
-    if (intent === "code_analyzer") {
+    if (cleanIntent === "code_analyzer") {
         return await CodeAnalyzerAgent(sessionId, cleanquery);
-    } else if (intent === "summarizer") {
+    } else if (cleanIntent === "summarizer") {
         return await SummarizerAgent(sessionId, cleanquery)
-    } else if (intent === "debugger") {
+    } else if (cleanIntent === "debugger") {
         return await DebuggerAgent(sessionId, cleanquery)
-    } else if (intent === "Rag_Agent") {
+    } else if (cleanIntent === "Rag_Agent") {
         return await Rag_Agent(sessionId, cleanquery)
     } else {
         return "I only answer questions about the provided repository"
