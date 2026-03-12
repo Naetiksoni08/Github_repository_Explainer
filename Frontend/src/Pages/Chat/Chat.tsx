@@ -3,6 +3,7 @@ import "./Chat.css"
 import { FiEdit } from "react-icons/fi";
 import toast from 'react-hot-toast'
 import api from '../../utils/axios';
+import ReactMarkdown from 'react-markdown'
 
 const Chat = () => {
 
@@ -14,13 +15,38 @@ const Chat = () => {
     const [repoUrl, setRepoUrl] = useState("")
     const [repoIngested, setRepoIngested] = useState(false)
     const [user, setUser] = useState<any>(null);
+    const [showSessions, setShowSessions] = useState(true);
+
+    const handleSessionClick = async (session: any) => {
+        const response = await api.get(`/api/sessions/${session.sessionId}`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        })
+
+        const data = response.data.data;
+        setSessionId(data.sessionId);
+        setRepoUrl(data.repoUrl);
+        setRepoIngested(true);
+        setMessages(data.messages)
+
+    }
+
+
+    const fetchSession = async () => {
+        const response = await api.get('/api/sessions', {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        })
+        console.log(response.data)
+        setSessions(response.data.data);
+    }
 
 
     useEffect(() => {
-        setSessionId(crypto.randomUUID())
-        const storedUser = localStorage.getItem("user")
-        if (storedUser) setUser(JSON.parse(storedUser))
+        setSessionId(crypto.randomUUID());
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) setUser(JSON.parse(storedUser));
+        fetchSession();
     }, [])
+
 
     const messagesEndRef = useRef<HTMLDivElement>(null)
     useEffect(() => {
@@ -54,7 +80,7 @@ const Chat = () => {
                     toast.success("Repository ready!")
                     setTimeout(() => {
                         setMessages(prev => prev.filter(msg => msg.content !== aiMessage.content))
-                       }, 8000);
+                    }, 8000);
                 }
 
             } else {
@@ -69,7 +95,7 @@ const Chat = () => {
 
             }
         } catch (error: any) {
-            console.log(error) 
+            console.log(error)
             toast.error(error?.response?.data?.message || "Something Went Wrong")
         } finally {
             setLoading(false);
@@ -98,9 +124,23 @@ const Chat = () => {
                         <span>New Chat</span>
                     </button>
                 </div>
-                <div className="sessions-list">
-                    {/* sessions map karenge */}
+                <div className='recent-header'>
+                    <span className="recent-title">Recent</span>
+                    <button className='hide-btn' onClick={() => setShowSessions(!showSessions)}>
+                        {showSessions ? "Hide" : "Show"}
+                    </button>
                 </div>
+                {showSessions && (
+                    <div className="sessions-list">
+                        {/* sessions map */}
+                        {sessions.map((session: any) => (
+                            <div key={session.sessionId} className='session-item' onClick={() => handleSessionClick(session)}>
+                                <span>{session.title}</span>
+                            </div>
+                        ))}
+
+                    </div>
+                )}
             </div>
 
             {/* Main Chat Area */}
@@ -118,7 +158,7 @@ const Chat = () => {
                     ) : (
                         messages.map((msg, index) => (
                             <div key={index} className={`message ${msg.role}`}>
-                                <p>{msg.content}</p>
+                                <ReactMarkdown>{msg.content}</ReactMarkdown>
                             </div>
                         ))
                     )}
@@ -137,7 +177,7 @@ const Chat = () => {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                     />
-                    <button>Send</button>
+                    <button onClick={handleSend}>Send</button>
                 </div>
 
             </div>

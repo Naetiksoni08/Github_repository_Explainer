@@ -9,7 +9,8 @@ import { AddMessage, getOrCreateSession } from "../AI/agents/memory";
 const ChatController = async (req: Request, res: Response) => {
     try {
         const { repoUrl, sessionId, query } = req.body
-        await getOrCreateSession(sessionId, repoUrl);
+        const user = req.user as any;
+        await getOrCreateSession(sessionId, repoUrl,user.id);
         const result = await Router(sessionId, query)
         await AddMessage(sessionId, "user", query)
         await AddMessage(sessionId, "assistant", result)

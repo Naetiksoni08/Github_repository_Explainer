@@ -1,10 +1,23 @@
 import SessionModel from "../../models/session.modal";
 import { Document } from "mongoose";
+import llm from "..";
 
-async function getOrCreateSession(sessionId: string, repourl: string): Promise<Document> {
+async function getOrCreateSession(sessionId: string, repoUrl: string, userId: string): Promise<Document> {
     const session = await SessionModel.findOne({ sessionId });
     if (!session) {
-        const newSession = await SessionModel.create({ sessionId, repourl });
+
+        const titleResponse = await llm.invoke(
+            `Give a 5-6 word title for this repo: ${repoUrl}. Return ONLY the title, nothing else.`
+        )
+        const title = titleResponse.content as string;
+
+        const newSession = await SessionModel.create({
+            sessionId,
+            repoUrl,
+            userId,
+            title,
+            messages: []
+        })
         return newSession as Document;
     }
     return session as Document;
