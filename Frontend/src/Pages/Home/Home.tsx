@@ -6,6 +6,7 @@ import "./Home.css"
 function Home() {
     const navigate = useNavigate();
     const [user, setUser] = useState<any>(null)
+    const [openMenu, setOpenMenu] = useState(false)
 
 
     useEffect(() => {
@@ -34,9 +35,26 @@ function Home() {
                         <span className='logo-text'>CodeLens AI</span>
                     </div>
                     <div className="nav-user">
-                        {/* user.name + user.picture */}
-                        <span className='user-name'>{user?.name}</span>
-                        <img className="user-avatar" src={user?.picture} alt={user?.name} />
+                        <img
+                            className="user-avatar"
+                            src={user?.picture}
+                            alt="avatar"
+                            onClick={() => setOpenMenu(!openMenu)}
+                        />
+
+                        {openMenu && (
+                            <div className="user-menu">
+                                <button
+                                    className="logout-btn"
+                                    onClick={() => {
+                                        localStorage.removeItem("user");
+                                        navigate("/auth");
+                                    }}
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </nav>
 

@@ -23,6 +23,20 @@
     flex-shrink: 0;
 }
 
+.sidebar {
+    width: 260px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    /* Collapse ke waqt content hide karne ke liye */
+}
+
+.sidebar.hidden {
+    width: 0;
+    padding: 0;
+    border: none;
+    margin: 0;
+}
+
 .sidebar-header {
     display: flex;
     flex-direction: column;
@@ -30,10 +44,116 @@
     margin-bottom: 24px;
 }
 
-.nav-logo {
+.floating-toggle {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 100;
+    background: transparent;
+    border: none;
+    color: #8a8a8a;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.floating-toggle:hover {
+    background: #2c2c2c;
+    color: white;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
+    /* Modal positioning ke liye */
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.user-profile:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.avatar {
+    width: 32px;
+    height: 32px;
+    background: #4f46e5;
+    /* Nice purple color */
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    overflow: hidden;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.username {
+    font-size: 14px;
+    color: #ececec;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Logout Modal/Tooltip Style */
+.logout-modal {
+    position: absolute;
+    bottom: 60px;
+    /* Profile ke upar dikhega */
+    left: 0;
+    width: 100%;
+    background: #252525;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    padding: 6px;
+    z-index: 100;
+}
+
+.logout-btn {
+    width: 100%;
     display: flex;
     align-items: center;
     gap: 10px;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    color: #ff4d4d;
+    /* Red color for logout */
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 77, 77, 0.1);
+}
+
+
+.nav-logo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
 }
 
 .logo-icon {
@@ -46,11 +166,32 @@
     justify-content: center;
 }
 
+.collapse-sidebar {
+    background: transparent;
+    border: none;
+    color: #8a8a8a;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.collapse-sidebar:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+
 .text-logo {
     font-size: 17px;
     font-weight: 500;
     color: #ececec;
     letter-spacing: 0.2px;
+    cursor: pointer;
+    flex: 1;
 }
 
 .new-chat-btn {
@@ -77,6 +218,27 @@
     justify-content: flex-start;
 }
 
+.search-chat-btn {
+    margin-top: -10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    background: #151515;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.search-chat-btn:hover {
+    background: #2c2c2c;
+}
+
 .sessions-list {
     flex: 1;
     overflow-y: auto;
@@ -95,7 +257,7 @@
     padding: 4px 8px;
     margin-top: 16px;
     margin-bottom: 4px;
-    
+
 }
 
 .recent-title {
@@ -119,7 +281,7 @@
 }
 
 .session-item {
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.2s ease;
@@ -132,6 +294,11 @@
 
 .session-item:hover {
     background: rgba(255, 255, 255, 0.08);
+}
+
+.session-item.active {
+    background: #2a2a2a;
+    border-left: 3px solid #4f46e5;
 }
 
 /* MAIN CHAT */

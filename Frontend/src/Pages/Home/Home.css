@@ -21,6 +21,15 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    flex: 0;
+    /* prevents stretching */
+}
+
+.nav-user {
+    margin-left: auto;
+    /* pushes avatar fully right */
+    display: flex;
+    align-items: center;
 }
 
 .logo-icon {
@@ -36,18 +45,8 @@
 .logo-text {
     font-size: 16px;
     font-weight: 500;
-    color: #1a1612 !important;
-}
-
-.nav-user {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.user-name {
-    font-size: 14px;
-    color: #5a4a3a;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
 }
 
 .user-avatar {
@@ -56,6 +55,43 @@
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid rgba(201, 109, 63, 0.3);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    /* smooth animation */
+}
+
+.user-avatar:hover {
+    transform: scale(1.12);
+    /* zoom effect */
+}
+
+
+.nav-user {
+    position: relative;
+}
+
+.user-menu {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    padding: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.logout-btn {
+    background: none;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #e54848;
+}
+
+.logout-btn:hover {
+    background: #f5f5f5;
 }
 
 .hero {
