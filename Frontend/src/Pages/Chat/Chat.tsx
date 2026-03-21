@@ -8,6 +8,9 @@ import Loader from '../../utils/Loader';
 import { useNavigate } from 'react-router-dom';
 import { FiSidebar } from "react-icons/fi";
 import { IoIosSearch } from "react-icons/io";
+import CodeBlock from '../../utils/CodeBlock'
+import { FiCopy, FiRefreshCw } from "react-icons/fi"
+import ThinkingLoader from "../../utils/ThinkerLoader"
 
 const Chat = () => {
     const [messages, setMessages] = useState<any[]>([])
@@ -22,6 +25,8 @@ const Chat = () => {
     const [loadingSession, setLoadingSession] = useState(false)
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [showSearch, setShowSearch] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("")
 
     const navigate = useNavigate();
 
@@ -59,6 +64,9 @@ const Chat = () => {
         })
         setSessions(response.data.data);
     }
+    const Filtersession = sessions.filter(
+        session => session.title?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     useEffect(() => {
         const storedUser = localStorage.getItem("user");
@@ -81,6 +89,9 @@ const Chat = () => {
         setMessages(prev => [...prev, userMessage])
         setInput("")
         setLoading(true)
+
+        await new Promise(res => setTimeout(res, 50))
+
         try {
             if (!repoIngested) {
                 const response = await api.post(
@@ -121,7 +132,7 @@ const Chat = () => {
         setRepoUrl("");
         setRepoIngested(false);
         setMessages([])
-        navigate("/chat")
+        navigate("/home")
     }
 
     const handleLogout = () => {
@@ -131,20 +142,60 @@ const Chat = () => {
     }
 
     const HandleSearchClick = async () => {
+        setShowSearch(true);
         const response = await api.get('/api/search', {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         })
     }
 
+
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto'
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+        }
+    }, [input])
+
+
+
     return (
+
         <div className="chat-wrapper">
-            <div className={`sidebar ${isSidebarCollapsed ? "hidden" : ""}`}>
+            {showSearch && (
+                <div className="search-overlay" onClick={() => { setShowSearch(false); setSearchQuery("") }}>
+                    <div className="search-modal" onClick={(e) => e.stopPropagation()}>
+                        <input
+                            autoFocus
+                            type="text"
+                            placeholder="Search sessions..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="search-input"
+                        />
+                        <div className="search-results">
+                            {Filtersession.length > 0 ? (
+                                Filtersession.map((session: any) => (
+                                    <div key={session.sessionId} className="search-result-item"
+                                        onClick={() => {
+                                            handleSessionClick(session)
+                                            setShowSearch(false)
+                                            setSearchQuery("")
+                                        }}>
+                                        <span>{session.title || "Untitled"}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="not-found">No sessions found</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            <div className={`sidebar ${isSidebarCollapsed ? "hidden" : ""}`}
+                onClick={() => setShowLogoutModal(false)}>
                 <div className="sidebar-header">
                     <div className="nav-logo">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="15 18 21 12 15 6" />
-                            <polyline points="9 6 3 12 9 18" />
-                        </svg>
                         <h2 onClick={handleHome} className="text-logo">CodeLens AI</h2>
                         <button className='collapse-sidebar' onClick={() => setIsSidebarCollapsed(true)}>
                             <FiSidebar size={16} />
@@ -180,13 +231,17 @@ const Chat = () => {
                     </div>
                 )}
                 <div className='sidebar-footer'>
-                    <div className='user-profile' onClick={() => setShowLogoutModal(!showLogoutModal)}>
+
+
+                    <div className='user-profile' onClick={(e) => { e.stopPropagation(); setShowLogoutModal(!showLogoutModal) }}>
+
                         <div className="avatar">
                             {user?.picture ? (
                                 <img src={user.picture} alt="profile" className="avatar-img" />
                             ) : (
                                 user?.name?.charAt(0) || "U"
                             )}
+
                         </div>
                         <span className='username'>{user?.name || "User"}</span>
                     </div>
@@ -216,24 +271,59 @@ const Chat = () => {
                     ) : (
                         messages.map((msg, index) => (
                             <div key={index} className={`message ${msg.role}`}>
-                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                <ReactMarkdown
+                                    components={{
+                                        code({ className, children }) {
+                                            return (
+                                                <CodeBlock className={className}>
+                                                    {children}
+                                                </CodeBlock>
+                                            )
+                                        }
+                                    }}
+                                >
+                                    {msg.content}
+                                </ReactMarkdown>
+
+                                {msg.role === "user" && (
+                                    <div className="message-actions">
+                                        <button data-tooltip="Copy" onClick={() => navigator.clipboard.writeText(msg.content)}>
+                                            <FiCopy size={13} />
+                                        </button>
+                                        <button data-tooltip="Edit" onClick={() => setInput(msg.content)}>
+                                            <FiEdit size={13} />
+                                        </button>
+                                        <button data-tooltip="Retry" onClick={() => {
+                                            setInput(msg.content)
+                                            setMessages(prev => prev.slice(0, index))
+                                        }}>
+                                            <FiRefreshCw size={13} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         ))
                     )}
                     {loading && (
                         <div className="message assistant">
-                            <Loader />
+                            <ThinkingLoader />
                         </div>
                     )}
                     <div ref={messagesEndRef}></div>
                 </div>
                 <div className="input-area">
-                    <input
-                        onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                        type="text"
+                    <textarea
+                        ref={textareaRef}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault()
+                                handleSend()
+                            }
+                        }}
                         placeholder={repoIngested ? "Ask anything about the repo..." : "Paste GitHub URL to get started..."}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
+                        rows={1}
                     />
                     <button onClick={handleSend}>Send</button>
                 </div>
@@ -241,5 +331,6 @@ const Chat = () => {
         </div >
     )
 }
+
 
 export default Chat

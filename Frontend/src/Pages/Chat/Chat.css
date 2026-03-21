@@ -21,13 +21,8 @@
     padding: 16px;
     border-right: 1px solid rgba(255, 255, 255, 0.06);
     flex-shrink: 0;
-}
-
-.sidebar {
-    width: 260px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: hidden;
-    /* Collapse ke waqt content hide karne ke liye */
+    overflow-x: hidden;
 }
 
 .sidebar.hidden {
@@ -67,6 +62,7 @@
     padding-top: 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     position: relative;
+    flex-shrink: 0;
     /* Modal positioning ke liye */
 }
 
@@ -312,7 +308,7 @@
 .messages-area {
     flex: 1;
     overflow-y: auto;
-    padding: 40px 20%;
+    padding: 40px 15%;
     display: flex;
     flex-direction: column;
     gap: 24px;
@@ -322,21 +318,34 @@
 .input-area {
     padding: 20px 20%;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 12px;
 }
 
-.input-area input {
+.input-area textarea {
     flex: 1;
     background: #2f2f2f;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
+    border-radius: 15px;
     padding: 16px 20px;
     color: #ececec;
     font-size: 15px;
     outline: none;
     font-family: 'Lora', Georgia, serif;
+    resize: none;
+    max-height: 200px;
+    overflow-y: auto;
+    line-height: 1.5;
 }
+
+.input-area textarea {
+    min-height: 52px;
+    max-height: 200px;
+    /* ← isse zyada nahi badhega */
+    overflow-y: auto;
+    resize: none;
+}
+
 
 .input-area input::placeholder {
     color: #666;
@@ -391,7 +400,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-width: 80%;
+    max-width: 75%;
 }
 
 .message.user {
@@ -406,9 +415,170 @@
     align-self: flex-start;
     color: #ececec;
     padding: 4px 0;
+    max-width: 85%;
 }
 
 .message p {
     font-size: 15px;
     line-height: 1.6;
+}
+
+
+.search-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 80px;
+}
+
+.search-modal {
+    width: 50%;
+    background: #252525;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.search-input {
+    width: 100%;
+    padding: 16px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ececec;
+    font-size: 15px;
+    outline: none;
+    font-family: 'Lora', Georgia, serif;
+}
+
+.search-results {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.search-result-item {
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #ececec;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.search-result-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.not-found {
+    text-align: center;
+    color: #666;
+    padding: 24px;
+    font-size: 14px;
+}
+
+
+.code-block-wrapper {
+    width: 100vh;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 14px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.code-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background: #1a1a1a;
+}
+
+.code-language {
+    font-size: 12px;
+    color: #8a8a8a;
+    font-family: monospace;
+}
+
+.copy-btn {
+    font-size: 12px;
+    color: #8a8a8a;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.copy-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ececec;
+}
+
+.message-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    justify-content: flex-end;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.message.user:hover .message-actions {
+    opacity: 1;
+}
+
+.message-actions button {
+    background: none;
+    border: none;
+    color: #8a8a8a;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.message-actions button:hover {
+    color: #ececec;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.inline-code {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 13px;
+    color: #e8956d;
+}
+
+.message-actions button {
+    position: relative;
+}
+
+.message-actions button::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: 130%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000000;
+    color: #ececec;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.message-actions button:hover::after {
+    opacity: 1;
 }

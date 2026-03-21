@@ -17,14 +17,26 @@ async function DebuggerAgent(sessionId: string, cleanquery: string): Promise<str
     
     USER QUESTION:
     ${cleanquery}
+
+    Before responding, ALWAYS start with one short friendly line like:
+- "Here's what you asked for! 🚀"
+- "Sure! Here's the code along with a brief explanation:"
+- "Got it! Here's a detailed breakdown:"
+
+Then give your actual response.
+
     
     Instructions:
     - Find bugs and errors in the code
     - Explain the root cause due to which the bug exists
     - Avoid unnecessary details
     - Suggest fixes to the bug with code example
+
+- Before each section, add a relevant question as a heading using markdown bold
+- Example: Instead of just "Purpose: ...", write "**What is the purpose of this repository?**" then answer
+- Example: Instead of "Functionalities: ...", write "**What does this repository do?**" then answer
     
-    Return a clean, structured Result.`
+   Return a SHORT, direct answer. Less is more.`
 
     const response = await llm.invoke(prompt);
     return response.content as string;

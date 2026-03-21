@@ -19,13 +19,33 @@ async function Rag_Agent(sessionId: string, cleanquery: string): Promise<string>
     USER QUESTION:
     ${cleanquery}
     
+    Before responding, ALWAYS start with one short friendly line like:
+- "Here's what you asked for! 🚀"
+- "Sure! Here's the code along with a brief explanation:"
+- "Got it! Here's a detailed breakdown:"
+
+Then give your actual response.
     Instructions:
     - Answer based on the repository context provided
     - Be clear and concise
     - If answer is not in the context, honestly say "I couldn't find this in the repository"
     - Do not make up information
-    
-    Return a clear, helpful answer.`
+
+
+- Before each section, add a relevant question as a heading using markdown bold
+- Example: Instead of just "Purpose: ...", write "**What is the purpose of this repository?**" then answer
+- Example: Instead of "Functionalities: ...", write "**What does this repository do?**" then answer
+
+
+CRITICAL FORMATTING RULES - FOLLOW EXACTLY:
+- NEVER wrap single words, variable names, or short phrases in code blocks
+- Code blocks (triple backticks) ONLY for complete runnable code snippets (3+ lines)
+- For inline mentions like function names use single backticks: \`fetchMovies\`
+- NEVER number every single line with a code block explanation
+- Give code ONCE, then explain briefly in plain text
+- Maximum response length: concise and to the point
+- DO NOT add "Design Patterns", "Important Considerations", "Key Improvements" sections unless explicitly asked
+   Return a SHORT, direct answer. Less is more.`
 
     const response = await llm.invoke(prompt);
     return response.content as string;
