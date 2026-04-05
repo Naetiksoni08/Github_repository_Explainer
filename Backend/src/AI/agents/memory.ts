@@ -2,14 +2,15 @@ import SessionModel from "../../models/session.modal";
 import { Document } from "mongoose";
 import llm from "..";
 
-async function getOrCreateSession(sessionId: string, repoUrl: string, userId: string): Promise<Document> {
+async function getOrCreateSession(sessionId: string, repoUrl: string, userId: string,query:string): Promise<Document> {
     const session = await SessionModel.findOne({ sessionId });
     if (!session) {
 
-        const titleResponse = await llm.invoke(
-            `Give a 5-6 word title for this repo: ${repoUrl}. Return ONLY the title, nothing else.`
-        )
-        const title = titleResponse.content as string;
+        const title = query? (await llm.invoke(`Give a 5-6 word title for a chat session where the user asked: "${query}" about this repo: ${repoUrl}. Return  
+            ONLY the title.`)).content as string                                                                                                  
+                : repoUrl.split("/").pop() || "New Chat" 
+                
+        // const title = titleResponse.content as string;
 
         const newSession = await SessionModel.create({
             sessionId,

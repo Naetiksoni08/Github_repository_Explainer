@@ -3,13 +3,17 @@ import error from "../utils/error";
 import { Request } from "express";
 import { Response } from "express";
 import ingest from "../AI/ingestion";
+import { getOrCreateSession } from "../AI/agents/memory";
+
 
 
 const IngestController = async (req: Request, res: Response) => {
     try {
         console.log("Ingest started:", req.body)
-        const { repoUrl } = req.body
+        const { repoUrl,sessionId } = req.body
+        const user = req.user as any
         await ingest(repoUrl)
+        await getOrCreateSession(sessionId,repoUrl,user.id,"");
         success(res, { repoUrl }, "Repository ingested successfully")
     } catch (err) {
         console.log("Ingest error:", err) 

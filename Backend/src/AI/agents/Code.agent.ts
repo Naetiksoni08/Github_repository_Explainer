@@ -2,9 +2,9 @@ import { getMessages } from "./memory";
 import retriever from "../retriever/retriever";
 import llm from "..";
 
-async function CodeAnalyzerAgent(sessionId: string, cleanquery: string): Promise<string> {
+async function* CodeAnalyzerAgent(sessionId: string, cleanquery: string,repoUrl:string): AsyncGenerator<string> {
   const getHistory = await getMessages(sessionId);
-  const chunks = await retriever(cleanquery);
+  const chunks = await retriever(cleanquery,repoUrl);
   const chunkContent = chunks.map((doc: any) => doc.pageContent).join("\n\n")
 
   const prompt = `You are a senior software engineer specializing in code analysis.
@@ -51,9 +51,11 @@ CRITICAL FORMATTING RULES - FOLLOW EXACTLY:
   // in any langauge so fulfill user request.
 
 
-  const response = await llm.invoke(prompt);
-  return response.content as string;
-
+  const stream = await llm.stream(prompt);
+  for await(const chunk of stream) {
+    yield chunk.content as string
+  }
+ 
 }
 
 export default CodeAnalyzerAgent;

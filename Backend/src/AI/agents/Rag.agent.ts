@@ -2,9 +2,9 @@ import { getMessages } from "./memory";
 import retriever from "../retriever/retriever";
 import llm from "..";
 
-async function Rag_Agent(sessionId: string, cleanquery: string): Promise<string> {
+async function* Rag_Agent(sessionId: string, cleanquery: string,repoUrl:string): AsyncGenerator<string> {
     const getHistory = await getMessages(sessionId);
-    const chunks = await retriever(cleanquery)
+    const chunks = await retriever(cleanquery,repoUrl)
     const chunkContent = chunks.map((doc: any) => doc.pageContent).join("\n\n")
 
 
@@ -47,8 +47,10 @@ CRITICAL FORMATTING RULES - FOLLOW EXACTLY:
 - DO NOT add "Design Patterns", "Important Considerations", "Key Improvements" sections unless explicitly asked
    Return a SHORT, direct answer. Less is more.`
 
-    const response = await llm.invoke(prompt);
-    return response.content as string;
+    const stream = await llm.stream(prompt);
+    for await (const chunk of stream) {
+        yield chunk.content as string
+    }
 
 }
 

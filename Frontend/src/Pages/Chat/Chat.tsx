@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import "./Chat.css"
-import { FiEdit } from "react-icons/fi";
+import { FiCheck, FiEdit } from "react-icons/fi";
 import toast from 'react-hot-toast'
 import api from '../../utils/axios';
 import ReactMarkdown from 'react-markdown'
@@ -17,7 +17,7 @@ const Chat = () => {
     const [input, setInput] = useState("")
     const [loading, setLoading] = useState(false)
     const [sessions, setSessions] = useState<any[]>([])
-    const [sessionId, setSessionId] = useState("")
+    const [sessionId, setSessionId] = useState(crypto.randomUUID())
     const [repoUrl, setRepoUrl] = useState("")
     const [repoIngested, setRepoIngested] = useState(false)
     const [user, setUser] = useState<any>(null);
@@ -27,6 +27,7 @@ const Chat = () => {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState("")
+    const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
     const navigate = useNavigate();
 
@@ -93,36 +94,76 @@ const Chat = () => {
         await new Promise(res => setTimeout(res, 50))
 
         try {
+            const token = localStorage.getItem("token");
+
             if (!repoIngested) {
-                const response = await api.post(
+                // INGEST FLOW
+                setRepoUrl(input)
+                await api.post(
                     '/api/ingest',
-                    { repoUrl: input },
-                    { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+                    { repoUrl: input, sessionId },
+                    { headers: { Authorization: `Bearer ${token}` } }
                 )
-                if (response.status) {
-                    setRepoUrl(input)
-                    setRepoIngested(true)
-                    const aiMessage = { role: "assistant", content: "Repository analyzed! Ask me anything about the codebase." }
-                    setMessages(prev => [...prev, aiMessage])
-                    toast.success("Repository ready!")
-                    setTimeout(() => {
-                        setMessages(prev => prev.filter(msg => msg.content !== aiMessage.content))
-                    }, 8000);
-                }
+                setRepoIngested(true)
+                const aiMessage = { role: "assistant", content: "Repository analyzed! Ask me anything about the codebase." }
+                setMessages(prev => [...prev, aiMessage])
+                toast.success("Repository ready!")
+                await fetchSession();
+                setTimeout(() => {
+                    setMessages(prev => prev.filter(msg => msg.content !== aiMessage.content))
+                }, 8000)
             } else {
-                const response = await api.post(
-                    '/api/chat',
-                    { sessionId, query: input, repoUrl },
-                    { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-                )
-                const data = await response.data;
-                const Aimessage = { role: "assistant", content: data.data.result };
-                setMessages(prev => [...prev, Aimessage]);
+                // CHAT FLOW — SSE streaming
+                setMessages(prev => [...prev, { role: "assistant", content: "" }])
+
+                const response = await fetch("http://localhost:5001/api/chat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ sessionId, query: input, repoUrl })
+                })
+
+                const reader = response.body!.getReader()
+                const decoder = new TextDecoder()
+
+                let streamStarted = false
+                while (true) {
+                    await fetchSession();
+                    const { done, value } = await reader.read()
+                    if (done) break
+
+                    const text = decoder.decode(value)
+                    const lines = text.split("\n")
+
+                    for (const line of lines) {
+                        if (line.startsWith("data: ")) {
+                            // const chunk = line.slice(6)
+                            const chunk = JSON.parse(line.slice(6))
+                            if (chunk === "[DONE]") break
+                            if (chunk === "[ERROR]") throw new Error("Stream error from server")
+                            if (!streamStarted) {
+                                setLoading(false);
+                                streamStarted = true;
+                            }
+
+                            setMessages(prev => {
+                                const updated = [...prev]
+                                updated[updated.length - 1] = {
+                                    ...updated[updated.length - 1],
+                                    content: updated[updated.length - 1].content + chunk
+                                }
+                                return updated
+                            })
+                        }
+                    }
+                }
             }
         } catch (error: any) {
             toast.error(error?.response?.data?.message || "Something Went Wrong")
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
     }
 
@@ -143,7 +184,7 @@ const Chat = () => {
 
     const HandleSearchClick = async () => {
         setShowSearch(true);
-        const response = await api.get('/api/search', {
+        await api.get('/api/search', {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         })
     }
@@ -287,10 +328,18 @@ const Chat = () => {
 
                                 {msg.role === "user" && (
                                     <div className="message-actions">
-                                        <button data-tooltip="Copy" onClick={() => navigator.clipboard.writeText(msg.content)}>
-                                            <FiCopy size={13} />
+                                        <button data-tooltip="Copy" onClick={() => {
+                                            navigator.clipboard.writeText(msg.content)
+                                            setCopiedIndex(index)
+                                            setTimeout(() =>
+                                                setCopiedIndex(null), 2000)
+                                        }}>
+                                            {copiedIndex === index ? <FiCheck size={13} /> : <FiCopy size={13} />}
                                         </button>
-                                        <button data-tooltip="Edit" onClick={() => setInput(msg.content)}>
+                                        <button data-tooltip="Edit" onClick={() => {
+                                            setInput(msg.content)
+                                            setTimeout(() => textareaRef.current?.focus(), 0)
+                                        }}>
                                             <FiEdit size={13} />
                                         </button>
                                         <button data-tooltip="Retry" onClick={() => {

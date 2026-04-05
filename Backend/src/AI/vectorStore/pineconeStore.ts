@@ -36,9 +36,7 @@ async function storeDocuments(docs: Document[], repoUrl: string) {
     });
 
     // 3. Upsert using the v7.x object syntax
-    await pineconeIndex.upsert({
-        records: vectors
-    });
+    await pineconeIndex.upsert({ records: vectors });
     
     console.log(`Stored ${vectors.length} vectors in Pinecone for: ${repoUrl}`);
 }

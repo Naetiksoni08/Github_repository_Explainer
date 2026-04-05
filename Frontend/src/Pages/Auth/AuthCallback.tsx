@@ -18,7 +18,7 @@ function AuthCallback() {
             // Unique ID prevents duplicate toasts in Strict Mode
             toast.success(`Welcome ${parsedUser.name}`, { id: 'auth-success' });
             
-            setTimeout(() => navigate("/home"), 500)
+            setTimeout(() => navigate("/"), 500)
         } else {
             navigate("/auth");
         }

@@ -1,4 +1,3 @@
-import success from "../utils/success";
 import error from "../utils/error";
 import { Request } from "express";
 import { Response } from "express";
@@ -10,13 +9,32 @@ const ChatController = async (req: Request, res: Response) => {
     try {
         const { repoUrl, sessionId, query } = req.body
         const user = req.user as any;
-        await getOrCreateSession(sessionId, repoUrl,user.id);
-        const result = await Router(sessionId, query)
+
+        res.setHeader("Content-Type", "text/event-stream")
+        res.setHeader("Cache-Control", "no-cache")
+        res.setHeader("Connection", "keep-alive")
+
+        await getOrCreateSession(sessionId, repoUrl, user.id, query);
+
+        let fullresponse = "";
+        const stream = Router(sessionId, query, repoUrl);
+        for await (const chunk of stream) {
+            fullresponse += chunk;
+            // res.write(`data: ${chunk}\n\n`)
+            res.write(`data: ${JSON.stringify(chunk)}\n\n`)
+        }
+
         await AddMessage(sessionId, "user", query)
-        await AddMessage(sessionId, "assistant", result)
-        success(res, { result }, "Success")
+        await AddMessage(sessionId, "assistant", fullresponse)
+        res.write("data: [DONE]\n\n")
+        res.end();
     } catch (err) {
-        error(res, err)
+        if (!res.headersSent) {
+            error(res, err)
+        } else {
+            res.write("data: [ERROR]\n\n")
+            res.end()
+        }
     }
 }
 

@@ -11,18 +11,24 @@ async function LoadDocument(repoUrl: string): Promise<Document[]> {
     }
 
     let docs: Document[] = [];
-    
-    try {
-        const loader = new GithubRepoLoader(repoUrl, { ...options, branch: "main" })
-        docs = await loader.load()
-    } catch {
-        const loader = new GithubRepoLoader(repoUrl, { ...options, branch: "master" })
-        docs = await loader.load()
+    const branches = ['main', 'master', 'develop', 'development'];
+    for (const branch of branches) {
+        try {
+            const loader = new GithubRepoLoader(repoUrl, { ...options, branch: branch });
+            let doc = await loader.load();
+            if (doc.length > 0) {
+                docs = doc;
+                break;
+            }
+        } catch (error) {
+            if (branch === branches[branches.length - 1]) {
+                throw new Error("No documents loaded from repo")
+            }else{
+                continue;
+            }
+        }
     }
-
-    if (!docs.length) throw new Error("No documents loaded from repo")
-    
-    console.log("Loaded docs:", docs.length)
     return docs
+
 }
 export default LoadDocument

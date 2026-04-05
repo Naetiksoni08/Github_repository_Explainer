@@ -33,19 +33,20 @@
 }
 
 .logo-icon {
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     background: linear-gradient(135deg, #c96d3f 0%, #e8956d 100%);
-    border-radius: 10px;
+    border-radius: 7px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .logo-text {
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 0.3px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    color: #1a1612;
     white-space: nowrap;
 }
 
@@ -144,4 +145,24 @@
 .get-started-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 28px rgba(201, 109, 63, 0.4);
+}
+
+.signin-btn {
+    background: transparent;
+    color: #a85530;
+    border: 1.5px solid #a85530;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'Lora', Georgia, serif;
+    transition: all 0.2s ease;
+}
+
+.signin-btn:hover {
+    background: #a85530;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(168, 85, 48, 0.3);
 }

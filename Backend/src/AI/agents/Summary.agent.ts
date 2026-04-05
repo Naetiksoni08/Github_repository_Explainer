@@ -2,9 +2,9 @@ import { getMessages } from "./memory";
 import retriever from "../retriever/retriever";
 import llm from "..";
 
-async function SummarizerAgent(sessionId: string, cleanquery: string): Promise<string> {
+async function* SummarizerAgent(sessionId: string, cleanquery: string, repoUrl: string): AsyncGenerator<string> {
     const getHistory = await getMessages(sessionId);
-    const chunks = await retriever(cleanquery)
+    const chunks = await retriever(cleanquery, repoUrl)
     const chunkContent = chunks.map((doc: any) => doc.pageContent).join("\n\n")
 
     const prompt = `You are an expert summarizer.
@@ -35,7 +35,7 @@ Then give your actual response.
 - Example: Instead of just "Purpose: ...", write "**What is the purpose of this repository?**" then answer
 - Example: Instead of "Functionalities: ...", write "**What does this repository do?**" then answer
 
-SCRITICAL FORMATTING RULES - FOLLOW EXACTLY:
+CRITICAL FORMATTING RULES - FOLLOW EXACTLY:
 - NEVER wrap single words, variable names, or short phrases in code blocks
 - Code blocks (triple backticks) ONLY for complete runnable code snippets (3+ lines)
 - For inline mentions like function names use single backticks: \`fetchMovies\`
@@ -46,8 +46,10 @@ SCRITICAL FORMATTING RULES - FOLLOW EXACTLY:
 
 Return a SHORT, direct answer. Less is more.`
 
-    const response = await llm.invoke(prompt);
-    return response.content as string;
+    const stream = await llm.stream(prompt);
+    for await (const chunk of stream) {
+        yield chunk.content as string
+    }
 
 }
 

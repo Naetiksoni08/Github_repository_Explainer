@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import "./Home.css"
+import toast from 'react-hot-toast';
 
 
 function Home() {
@@ -13,10 +14,7 @@ function Home() {
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
             setUser(JSON.parse(storedUser));
-        } else {
-            navigate("/auth");
         }
-
     }, [])
     return (
         <div>
@@ -27,7 +25,7 @@ function Home() {
                     <div className="nav-logo">
                         <div className='logo-icon'>
                             {/* SVG + CodeLens AI */}
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="15 18 21 12 15 6" />
                                 <polyline points="9 6 3 12 9 18" />
                             </svg>
@@ -35,12 +33,16 @@ function Home() {
                         <span className='logo-text'>CodeLens AI</span>
                     </div>
                     <div className="nav-user">
-                        <img
-                            className="user-avatar"
-                            src={user?.picture}
-                            alt="avatar"
-                            onClick={() => setOpenMenu(!openMenu)}
-                        />
+                        {user ? (
+                            <img
+                                className="user-avatar"
+                                src={user?.picture}
+                                alt="avatar"
+                                onClick={() => setOpenMenu(!openMenu)}
+                            />
+                        ) : (
+                            <button className="signin-btn" onClick={() => navigate("/auth")}>Sign In</button>
+                        )}
 
                         {openMenu && (
                             <div className="user-menu">
@@ -67,12 +69,18 @@ function Home() {
                     <p className="hero-subtitle">
                         Paste a GitHub URL and ask anything — CodeLens AI analyzes your codebase and answers with context.
                     </p>
-                    <button className="get-started-btn" onClick={() => navigate("/chat")}>
+                    <button className="get-started-btn" onClick={() => {
+                        if (!user) {
+                            toast.error("Please Sign in First!")
+                        } else {
+                            navigate("/chat")
+                        }
+                    }}>
                         Get Started
                     </button>
                 </div>
             </div>
-        </div>
+        </div >
     )
 }
 
