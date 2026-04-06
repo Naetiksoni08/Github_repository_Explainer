@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import "./Auth.css";
+import { useNavigate } from 'react-router-dom';
+import { IoIosArrowRoundBack } from "react-icons/io";
 
 const Auth = () => {
+    const navigate = useNavigate();
     const [mounted, setmounted] = useState(false);
 
     useEffect(() => {
@@ -18,6 +21,10 @@ const Auth = () => {
 
     return (
         <div className='auth-wrapper'>
+            <button className='back-to-home' onClick={() => navigate("/home")}>
+                <IoIosArrowRoundBack size={30} />
+                Back to Home
+            </button>
             <div className={`auth-card ${mounted ? "visible" : ""}`}>
 
                 {/* Logo Area */}

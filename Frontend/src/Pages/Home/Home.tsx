@@ -33,16 +33,17 @@ function Home() {
                         <span className='logo-text'>CodeLens AI</span>
                     </div>
                     <div className="nav-user">
-                        {user ? (
-                            <img
-                                className="user-avatar"
-                                src={user?.picture}
-                                alt="avatar"
-                                onClick={() => setOpenMenu(!openMenu)}
-                            />
-                        ) : (
-                            <button className="signin-btn" onClick={() => navigate("/auth")}>Sign In</button>
-                        )}
+
+                        <img
+                            className="user-avatar"
+                            src={user?.picture || "/avatar.svg"}
+                            alt="avatar"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => { (e.target as HTMLImageElement).src = "/avatar.svg" }}
+                            onClick={() => user && setOpenMenu(!openMenu)}
+                            style={{ cursor: user ? "pointer" : "default" }}
+                        />
+
 
                         {openMenu && (
                             <div className="user-menu">
@@ -69,15 +70,20 @@ function Home() {
                     <p className="hero-subtitle">
                         Paste a GitHub URL and ask anything — CodeLens AI analyzes your codebase and answers with context.
                     </p>
-                    <button className="get-started-btn" onClick={() => {
-                        if (!user) {
-                            toast.error("Please Sign in First!")
-                        } else {
-                            navigate("/chat")
-                        }
-                    }}>
-                        Get Started
-                    </button>
+                    <div className="hero-actions">
+                        <button className="get-started-btn" onClick={() => {
+                            if (!user) {
+                                toast("⚠️ Please SignIn To Continue !")
+                            } else {
+                                navigate("/chat")
+                            }
+                        }}>
+                            Get Started
+                        </button>
+                        {!user && (
+                            <button className="signin-btn" onClick={() => navigate("/auth")}>Sign In</button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div >

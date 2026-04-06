@@ -55,7 +55,7 @@
     height: 36px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid rgba(201, 109, 63, 0.3);
+    border: 2px solid rgba(0, 0, 0, 0.4);
     cursor: pointer;
     transition: transform 0.2s ease;
     /* smooth animation */
@@ -128,6 +128,12 @@
     font-family: 'Lora', Georgia, serif;
 }
 
+.hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
 .get-started-btn {
     background: linear-gradient(135deg, #a85530 0%, #c96d3f 100%);
     color: white;
@@ -151,8 +157,8 @@
     background: transparent;
     color: #a85530;
     border: 1.5px solid #a85530;
-    padding: 8px 20px;
-    border-radius: 8px;
+    padding: 14px 28px;
+    border-radius: 12px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -161,8 +167,6 @@
 }
 
 .signin-btn:hover {
-    background: #a85530;
-    color: white;
     transform: translateY(-1px);
     box-shadow: 0 4px 14px rgba(168, 85, 48, 0.3);
 }

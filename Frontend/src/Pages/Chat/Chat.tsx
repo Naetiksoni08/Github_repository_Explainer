@@ -11,6 +11,7 @@ import { IoIosSearch } from "react-icons/io";
 import CodeBlock from '../../utils/CodeBlock'
 import { FiCopy, FiRefreshCw } from "react-icons/fi"
 import ThinkingLoader from "../../utils/ThinkerLoader"
+import { MdOutlineWbSunny, MdOutlineWbTwilight } from 'react-icons/md';
 
 const Chat = () => {
     const [messages, setMessages] = useState<any[]>([])
@@ -28,6 +29,7 @@ const Chat = () => {
     const [showSearch, setShowSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState("")
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+    const [isDark, setIsDark] = useState(true) // default dark
 
     const navigate = useNavigate();
 
@@ -96,7 +98,9 @@ const Chat = () => {
         try {
             const token = localStorage.getItem("token");
 
-            if (!repoIngested) {
+            const isGithubUrl = input.trim().startsWith("https://github.com") || input.trim().includes("github.com/")
+
+            if (!repoIngested && isGithubUrl) {
                 // INGEST FLOW
                 setRepoUrl(input)
                 await api.post(
@@ -105,7 +109,7 @@ const Chat = () => {
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
                 setRepoIngested(true)
-                const aiMessage = { role: "assistant", content: "Repository analyzed! Ask me anything about the codebase." }
+                const aiMessage = { role: "assistant", content: "Repository analyzed!.", timestamp: new Date().toISOString() }
                 setMessages(prev => [...prev, aiMessage])
                 toast.success("Repository ready!")
                 await fetchSession();
@@ -114,7 +118,7 @@ const Chat = () => {
                 }, 8000)
             } else {
                 // CHAT FLOW — SSE streaming
-                setMessages(prev => [...prev, { role: "assistant", content: "" }])
+                setMessages(prev => [...prev, { role: "assistant", content: "", timestamp: new Date().toISOString() }])
 
                 const response = await fetch("http://localhost:5001/api/chat", {
                     method: "POST",
@@ -198,11 +202,14 @@ const Chat = () => {
         }
     }, [input])
 
-
+    useEffect(() => {
+        const saved = localStorage.getItem("theme");
+        setIsDark(saved !== "light")
+    }, [])
 
     return (
 
-        <div className="chat-wrapper">
+        <div className={`chat-wrapper ${isDark ? "dark" : "light"}`}>
             {showSearch && (
                 <div className="search-overlay" onClick={() => { setShowSearch(false); setSearchQuery("") }}>
                     <div className="search-modal" onClick={(e) => e.stopPropagation()}>
@@ -250,6 +257,14 @@ const Chat = () => {
                         <IoIosSearch size={20} />
                         <span>Search</span>
                     </button>
+                    <button className='theme-toggle-btn' onClick={() => {
+                        const next = !isDark
+                        setIsDark(next)
+                        localStorage.setItem("theme", next ? "dark" : "light")
+                    }}>
+                        {isDark ? <MdOutlineWbSunny /> : <MdOutlineWbTwilight />}
+                        <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
+                    </button>
 
                 </div>
                 <div className='recent-header'>
@@ -277,12 +292,13 @@ const Chat = () => {
                     <div className='user-profile' onClick={(e) => { e.stopPropagation(); setShowLogoutModal(!showLogoutModal) }}>
 
                         <div className="avatar">
-                            {user?.picture ? (
-                                <img src={user.picture} alt="profile" className="avatar-img" />
-                            ) : (
-                                user?.name?.charAt(0) || "U"
-                            )}
-
+                            <img
+                                src={user?.picture || "/avatar.svg"}
+                                alt="profile"
+                                className="avatar-img"
+                                referrerPolicy="no-referrer"
+                                onError={(e) => { (e.target as HTMLImageElement).src = "/avatar.svg" }}
+                            />
                         </div>
                         <span className='username'>{user?.name || "User"}</span>
                     </div>
@@ -347,6 +363,23 @@ const Chat = () => {
                                             setMessages(prev => prev.slice(0, index))
                                         }}>
                                             <FiRefreshCw size={13} />
+                                        </button>
+                                    </div>
+                                )}
+
+                                {msg.role === "assistant" && msg.content && (
+                                    <div className="message-footer">
+                                        {msg.timestamp && (
+                                            <span className="message-time">
+                                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        )}
+                                        <button className="footer-copy-btn" data-tooltip="Copy" onClick={() => {
+                                            navigator.clipboard.writeText(msg.content)
+                                            setCopiedIndex(index)
+                                            setTimeout(() => setCopiedIndex(null), 2000)
+                                        }}>
+                                            {copiedIndex === index ? <FiCheck size={15} /> : <FiCopy size={15} />}
                                         </button>
                                     </div>
                                 )}

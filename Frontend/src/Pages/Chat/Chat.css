@@ -4,22 +4,54 @@
     box-sizing: border-box;
 }
 
+.chat-wrapper.dark {
+    --bg: #212121;
+    --sidebar-bg: #151515;
+    --surface: #2f2f2f;
+    --surface-hover: #2c2c2c;
+    --text: #ececec;
+    --text-muted: #8a8a8a;
+    --text-faint: #666;
+    --border: rgba(255, 255, 255, 0.08);
+    --sidebar-border: rgba(255, 255, 255, 0.06);
+    --modal-bg: #252525;
+    --modal-border: rgba(255, 255, 255, 0.1);
+    --session-active-bg: #2a2a2a;
+    --code-header-bg: #1a1a1a;
+}
+
+.chat-wrapper.light {
+    --bg: #f5f0e8;
+    --sidebar-bg: #ede8e0;
+    --surface: #e0d9cf;
+    --surface-hover: #d5cec4;
+    --text: #1a1612;
+    --text-muted: #8b7d6b;
+    --text-faint: #a09080;
+    --border: rgba(0, 0, 0, 0.08);
+    --sidebar-border: rgba(0, 0, 0, 0.07);
+    --modal-bg: #fff;
+    --modal-border: rgba(0, 0, 0, 0.1);
+    --session-active-bg: #ddd7cd;
+    --code-header-bg: #d8d1c7;
+}
+
 .chat-wrapper {
     display: flex;
     height: 100vh;
-    background: #212121;
+    background: var(--bg);
     font-family: 'Lora', Georgia, serif;
-    color: #ececec;
+    color: var(--text);
 }
 
 /* SIDEBAR */
 .sidebar {
     width: 260px;
-    background: #151515;
+    background: var(--sidebar-bg);
     display: flex;
     flex-direction: column;
     padding: 16px;
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    border-right: 1px solid var(--sidebar-border);
     flex-shrink: 0;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow-x: hidden;
@@ -60,7 +92,7 @@
 .sidebar-footer {
     margin-top: auto;
     padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--border);
     position: relative;
     flex-shrink: 0;
     /* Modal positioning ke liye */
@@ -103,7 +135,7 @@
 
 .username {
     font-size: 14px;
-    color: #ececec;
+    color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -113,11 +145,10 @@
 .logout-modal {
     position: absolute;
     bottom: 60px;
-    /* Profile ke upar dikhega */
     left: 0;
     width: 100%;
-    background: #252525;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--modal-bg);
+    border: 1px solid var(--modal-border);
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     padding: 6px;
@@ -184,7 +215,7 @@
 .text-logo {
     font-size: 17px;
     font-weight: 500;
-    color: #ececec;
+    color: var(--text);
     letter-spacing: 0.2px;
     cursor: pointer;
     flex: 1;
@@ -196,10 +227,10 @@
     gap: 10px;
     width: 100%;
     padding: 10px 12px;
-    background: #151515;
+    background: var(--sidebar-bg);
     border: none;
     border-radius: 8px;
-    color: white;
+    color: var(--text);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -207,7 +238,7 @@
 }
 
 .new-chat-btn:hover {
-    background: #2c2c2c;
+    background: var(--surface-hover);
 }
 
 .new-chat-btn {
@@ -221,10 +252,10 @@
     gap: 10px;
     width: 100%;
     padding: 10px 12px;
-    background: #151515;
+    background: var(--sidebar-bg);
     border: none;
     border-radius: 8px;
-    color: white;
+    color: var(--text);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -232,7 +263,28 @@
 }
 
 .search-chat-btn:hover {
-    background: #2c2c2c;
+    background: var(--surface-hover);
+}
+
+.theme-toggle-btn {
+    margin-top: -10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--sidebar-bg);
+    border: none;
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+    background: var(--surface-hover);
 }
 
 .sessions-list {
@@ -282,7 +334,7 @@
     cursor: pointer;
     transition: background 0.2s ease;
     font-size: 13px;
-    color: #ececec;
+    color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -293,7 +345,7 @@
 }
 
 .session-item.active {
-    background: #2a2a2a;
+    background: var(--session-active-bg);
     border-left: 3px solid #4f46e5;
 }
 
@@ -324,11 +376,11 @@
 
 .input-area textarea {
     flex: 1;
-    background: #2f2f2f;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 15px;
     padding: 16px 20px;
-    color: #ececec;
+    color: var(--text);
     font-size: 15px;
     outline: none;
     font-family: 'Lora', Georgia, serif;
@@ -356,18 +408,18 @@
 }
 
 .input-area button {
-    background: #2f2f2f;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 15px;
     padding: 14px 20px;
-    color: white;
+    color: var(--text);
     cursor: pointer;
     font-size: 14px;
     transition: all 0.2s ease;
 }
 
 .input-area button:hover {
-    background: #282828;
+    background: var(--surface-hover);
 }
 
 .input-area button:focus {
@@ -388,12 +440,12 @@
 .empty-state h2 {
     font-size: 24px;
     font-weight: 500;
-    color: #ececec;
+    color: var(--text);
 }
 
 .empty-state p {
     font-size: 14px;
-    color: #666;
+    color: var(--text-faint);
 }
 
 .message {
@@ -405,15 +457,15 @@
 
 .message.user {
     align-self: flex-end;
-    background: #2f2f2f;
+    background: var(--surface);
     padding: 12px 16px;
     border-radius: 12px;
-    color: #ececec;
+    color: var(--text);
 }
 
 .message.assistant {
     align-self: flex-start;
-    color: #ececec;
+    color: var(--text);
     padding: 4px 0;
     max-width: 85%;
 }
@@ -438,9 +490,9 @@
 
 .search-modal {
     width: 50%;
-    background: #252525;
+    background: var(--modal-bg);
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--modal-border);
     overflow: hidden;
 }
 
@@ -449,8 +501,8 @@
     padding: 16px 20px;
     background: transparent;
     border: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    color: #ececec;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
     font-size: 15px;
     outline: none;
     font-family: 'Lora', Georgia, serif;
@@ -466,7 +518,7 @@
     padding: 12px 16px;
     border-radius: 8px;
     cursor: pointer;
-    color: #ececec;
+    color: var(--text);
     font-size: 14px;
     transition: background 0.2s;
 }
@@ -496,7 +548,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 8px 16px;
-    background: #1a1a1a;
+    background: var(--code-header-bg);
 }
 
 .code-language {
@@ -524,14 +576,17 @@
 .message-actions {
     display: flex;
     gap: 6px;
-    margin-top: 6px;
     justify-content: flex-end;
     opacity: 0;
-    transition: opacity 0.2s;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.2s, max-height 0.2s, margin-top 0.2s;
 }
 
 .message.user:hover .message-actions {
     opacity: 1;
+    max-height: 30px;
+    margin-top: 6px;
 }
 
 .message-actions button {
@@ -581,4 +636,31 @@
 
 .message-actions button:hover::after {
     opacity: 1;
+}
+.message-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.message-time {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.footer-copy-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+}
+
+.footer-copy-btn:hover {
+    color: var(--text);
 }
