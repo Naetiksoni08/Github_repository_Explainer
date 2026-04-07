@@ -29,3 +29,25 @@ export const GetAllSessionsController = async (req: Request, res: Response) => {
         error(res, "Could not fetch sessions");
     }
 }
+
+export const DeleteSessionController = async (req: Request, res: Response) => {
+    try {
+        const { sessionId } = req.params;
+        await SessionModel.findOneAndDelete({ sessionId });
+        success(res, null, "Session Deleted");
+    } catch (err) {
+        error(res, "Something Went Wrong");
+    }
+}
+
+export const RenameSessionController = async (req: Request, res: Response) => {
+    try {
+        const { sessionId } = req.params;
+        const { title } = req.body;
+        await SessionModel.findOneAndUpdate({ sessionId }, { title });
+        success(res, null, "Session Rename");
+    } catch (err) {
+        error(res, "Something Went Wrong");
+    }
+}
+

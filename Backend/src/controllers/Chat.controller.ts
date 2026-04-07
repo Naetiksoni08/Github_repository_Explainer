@@ -7,7 +7,9 @@ import { AddMessage, getOrCreateSession } from "../AI/agents/memory";
 
 const ChatController = async (req: Request, res: Response) => {
     try {
-        const { repoUrl, sessionId, query } = req.body
+        const { repoUrl: rawRepoUrl, sessionId, query } = req.body
+        const repoUrl = rawRepoUrl?.trim() || ""
+        console.log("Chat request repoUrl:", JSON.stringify(repoUrl))
         const user = req.user as any;
 
         res.setHeader("Content-Type", "text/event-stream")

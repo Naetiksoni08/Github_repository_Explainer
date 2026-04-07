@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import "./Chat.css"
-import { FiCheck, FiEdit } from "react-icons/fi";
+import { FiCheck, FiEdit, FiSend, FiSquare } from "react-icons/fi";
 import toast from 'react-hot-toast'
 import api from '../../utils/axios';
 import ReactMarkdown from 'react-markdown'
@@ -12,6 +12,7 @@ import CodeBlock from '../../utils/CodeBlock'
 import { FiCopy, FiRefreshCw } from "react-icons/fi"
 import ThinkingLoader from "../../utils/ThinkerLoader"
 import { MdOutlineWbSunny, MdOutlineWbTwilight } from 'react-icons/md';
+import { MdKeyboardArrowDown } from "react-icons/md";
 
 const Chat = () => {
     const [messages, setMessages] = useState<any[]>([])
@@ -30,8 +31,13 @@ const Chat = () => {
     const [searchQuery, setSearchQuery] = useState("")
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
     const [isDark, setIsDark] = useState(true) // default dark
+    const [showSessionMenu, setShowSessionMenu] = useState(false)
+    const [isRenaming, setIsRenaming] = useState(false)
+    const [renameValue, setRenameValue] = useState("")
+
 
     const navigate = useNavigate();
+    const abortControllerRef = useRef<AbortController | null>(null)
 
     const handleSessionClick = async (session: any) => {
         if (loadingSession) return
@@ -43,7 +49,7 @@ const Chat = () => {
             })
             const data = response.data.data;
             setSessionId(data.sessionId);
-            setRepoUrl(data.repoUrl);
+            setRepoUrl(data.repoUrl?.trim() || "");
             setRepoIngested(true);
             setMessages(data.messages)
             localStorage.setItem("activeSession", session.sessionId);
@@ -102,10 +108,11 @@ const Chat = () => {
 
             if (!repoIngested && isGithubUrl) {
                 // INGEST FLOW
-                setRepoUrl(input)
+                const trimmedUrl = input.trim()
+                setRepoUrl(trimmedUrl)
                 await api.post(
                     '/api/ingest',
-                    { repoUrl: input, sessionId },
+                    { repoUrl: trimmedUrl, sessionId },
                     { headers: { Authorization: `Bearer ${token}` } }
                 )
                 setRepoIngested(true)
@@ -119,52 +126,78 @@ const Chat = () => {
             } else {
                 // CHAT FLOW — SSE streaming
                 setMessages(prev => [...prev, { role: "assistant", content: "", timestamp: new Date().toISOString() }])
-
+                abortControllerRef.current = new AbortController()
                 const response = await fetch("http://localhost:5001/api/chat", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         "Authorization": `Bearer ${token}`
                     },
-                    body: JSON.stringify({ sessionId, query: input, repoUrl })
+                    body: JSON.stringify({ sessionId, query: input, repoUrl }),
+                    signal: abortControllerRef.current.signal
                 })
 
                 const reader = response.body!.getReader()
                 const decoder = new TextDecoder()
 
                 let streamStarted = false
-                while (true) {
-                    await fetchSession();
-                    const { done, value } = await reader.read()
-                    if (done) break
+                try {
+                    while (true) {
+                        await fetchSession();
+                        const { done, value } = await reader.read()
+                        if (done) break
 
-                    const text = decoder.decode(value)
-                    const lines = text.split("\n")
+                        const text = decoder.decode(value)
+                        const lines = text.split("\n")
 
-                    for (const line of lines) {
-                        if (line.startsWith("data: ")) {
-                            // const chunk = line.slice(6)
-                            const chunk = JSON.parse(line.slice(6))
-                            if (chunk === "[DONE]") break
-                            if (chunk === "[ERROR]") throw new Error("Stream error from server")
-                            if (!streamStarted) {
-                                setLoading(false);
-                                streamStarted = true;
-                            }
-
-                            setMessages(prev => {
-                                const updated = [...prev]
-                                updated[updated.length - 1] = {
-                                    ...updated[updated.length - 1],
-                                    content: updated[updated.length - 1].content + chunk
+                        for (const line of lines) {
+                            if (line.startsWith("data: ")) {
+                                const chunk = JSON.parse(line.slice(6))
+                                if (chunk === "[DONE]") break
+                                if (chunk === "[ERROR]") throw new Error("Stream error from server")
+                                if (!streamStarted) {
+                                    setLoading(false)
+                                    streamStarted = true
                                 }
-                                return updated
-                            })
+                                setMessages(prev => {
+                                    const updated = [...prev]
+                                    updated[updated.length - 1] = {
+                                        ...updated[updated.length - 1],
+                                        content: updated[updated.length - 1].content + chunk
+                                    }
+                                    return updated
+                                })
+                            }
                         }
                     }
+                } catch (err: any) {
+                    if (err.name === "AbortError") {
+                        setMessages(prev => {
+                            const updated = [...prev]
+                            const last = updated[updated.length - 1]
+                            if (last?.role === "assistant") {
+                                updated[updated.length - 1] = { ...last, interrupted: true }
+                            }
+                            return updated
+                        })
+                        setLoading(false)
+                        return
+                    }
+                    throw err
                 }
             }
         } catch (error: any) {
+            if (error?.name === "AbortError") {
+                setMessages(prev => {
+                    const updated = [...prev]
+                    const last = updated[updated.length - 1]
+                    if (last?.role === "assistant") {
+                        updated[updated.length - 1] = { ...last, interrupted: true }
+                    }
+                    return updated
+                })
+                return
+            }
             toast.error(error?.response?.data?.message || "Something Went Wrong")
         } finally {
             setLoading(false)
@@ -206,6 +239,25 @@ const Chat = () => {
         const saved = localStorage.getItem("theme");
         setIsDark(saved !== "light")
     }, [])
+
+    const handleAbort = () => {
+        abortControllerRef.current?.abort()
+    }
+
+    const handleRename = async () => {
+        await api.patch(`/api/sessions/${sessionId}`, { title: renameValue }, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        })
+        await fetchSession();
+        setIsRenaming(false);
+        setShowSessionMenu(false);
+    }
+
+    const handleDelete = async () => {
+        await api.delete(`/api/sessions/${sessionId}`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        })
+    }
 
     return (
 
@@ -309,13 +361,45 @@ const Chat = () => {
                     )}
                 </div>
             </div>
-            {isSidebarCollapsed && (
-                <button className="floating-toggle" onClick={() => setIsSidebarCollapsed(false)}>
-                    <FiSidebar size={20} />
-                </button>
-            )}
-
             <div className="chat-main">
+                <div className='chat-header'>
+                    {isSidebarCollapsed && (
+                        <button className="floating-toggle" onClick={() => setIsSidebarCollapsed(false)}>
+                            <FiSidebar size={20} />
+                        </button>
+                    )}
+                    <span className='chat-title' onClick={() => setShowSessionMenu(!showSessionMenu)}>
+                        {sessions.find(s => s.sessionId === sessionId)?.title || "New Chat"}
+                        <MdKeyboardArrowDown size={20} />
+                    </span>
+
+                    {showSessionMenu && (
+                        <div className='session-menu'>
+                            {isRenaming ? (
+                                <div className="rename-input-row">
+                                    <input
+                                        autoFocus
+                                        value={renameValue}
+                                        onChange={(e) => setRenameValue(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key == "Enter") handleRename()
+                                            if (e.key == "Escape") setIsRenaming(false)
+                                        }}
+                                    />
+                                    <button onClick={handleRename}>Save</button>
+                                </div>
+                            ) : (
+                                <>
+                                    <button onClick={() => {
+                                        setRenameValue(sessions.find(s => s.sessionId === sessionId)?.title || "");
+                                        setIsRenaming(true);
+                                    }}>Rename</button>
+                                    <button className="delete-option" onClick={handleDelete}>Delete</button>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
                 <div className="messages-area">
                     {loadingSession ? (
                         <Loader />
@@ -341,6 +425,10 @@ const Chat = () => {
                                 >
                                     {msg.content}
                                 </ReactMarkdown>
+
+                                {msg.interrupted && (
+                                    <span className="interrupted-text">User interrupted the response</span>
+                                )}
 
                                 {msg.role === "user" && (
                                     <div className="message-actions">
@@ -407,7 +495,9 @@ const Chat = () => {
                         onChange={(e) => setInput(e.target.value)}
                         rows={1}
                     />
-                    <button onClick={handleSend}>Send</button>
+                    <button onClick={loading ? handleAbort : handleSend}>
+                        {loading ? <FiSquare size={16} /> : <FiSend size={16} />}
+                    </button>
                 </div>
             </div>
         </div >

@@ -72,16 +72,33 @@
 }
 
 .floating-toggle {
-    position: fixed;
-    top: 15px;
-    left: 15px;
-    z-index: 100;
     background: transparent;
     border: none;
     color: #8a8a8a;
     cursor: pointer;
-    padding: 10px;
+    padding: 6px;
     border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.chat-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.chat-title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .floating-toggle:hover {
@@ -637,6 +654,7 @@
 .message-actions button:hover::after {
     opacity: 1;
 }
+
 .message-footer {
     display: flex;
     align-items: center;
@@ -663,4 +681,99 @@
 
 .footer-copy-btn:hover {
     color: var(--text);
+}
+
+.interrupted-text {
+    display: block;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    font-style: italic;
+}
+
+.chat-header {
+    position: relative;
+    /* add this */
+}
+
+.chat-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.chat-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.session-menu {
+    position: absolute;
+    top: 100%;
+    left: 20px;
+    background: var(--modal-bg);
+    border: 1px solid var(--modal-border);
+    border-radius: 8px;
+    padding: 6px;
+    z-index: 50;
+    min-width: 140px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.session-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.session-menu button:hover {
+    background: var(--surface);
+}
+
+.session-menu .delete-option {
+    color: #ff4d4d;
+}
+
+.session-menu .delete-option:hover {
+    background: rgba(255, 77, 77, 0.1);
+}
+
+.rename-input-row {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+}
+
+.rename-input-row input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+}
+
+.rename-input-row button {
+    padding: 6px 10px;
+    background: #4f46e5;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
 }
