@@ -39,6 +39,11 @@
     }
 }
 
+.light .skeleton-line {
+    background: linear-gradient(90deg, #d0d0d0 25%, #e8e8e8 50%, #d0d0d0 75%);
+    background-size: 200% 100%;
+}
+
 .thinking {
     display: flex;
     align-items: center;

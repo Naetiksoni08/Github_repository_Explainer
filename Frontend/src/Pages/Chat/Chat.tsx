@@ -11,8 +11,7 @@ import { IoIosSearch } from "react-icons/io";
 import CodeBlock from '../../utils/CodeBlock'
 import { FiCopy, FiRefreshCw } from "react-icons/fi"
 import ThinkingLoader from "../../utils/ThinkerLoader"
-import { MdOutlineWbSunny, MdOutlineWbTwilight } from 'react-icons/md';
-import { MdKeyboardArrowDown } from "react-icons/md";
+import { MdOutlineWbSunny, MdOutlineDarkMode, MdKeyboardArrowDown } from 'react-icons/md';
 
 const Chat = () => {
     const [messages, setMessages] = useState<any[]>([])
@@ -76,6 +75,9 @@ const Chat = () => {
     const Filtersession = sessions.filter(
         session => session.title?.toLowerCase().includes(searchQuery.toLowerCase())
     );
+    const starredSessions = sessions.filter(s => s.starred)
+    const normalSessions = sessions.filter(s => !s.starred)
+    const currentSessionStarred = sessions.find(s => s.sessionId === sessionId)?.starred
 
     useEffect(() => {
         const storedUser = localStorage.getItem("user");
@@ -98,6 +100,7 @@ const Chat = () => {
         setMessages(prev => [...prev, userMessage])
         setInput("")
         setLoading(true)
+        localStorage.setItem("activeSession", sessionId);
 
         await new Promise(res => setTimeout(res, 50))
 
@@ -143,7 +146,6 @@ const Chat = () => {
                 let streamStarted = false
                 try {
                     while (true) {
-                        await fetchSession();
                         const { done, value } = await reader.read()
                         if (done) break
 
@@ -152,9 +154,10 @@ const Chat = () => {
 
                         for (const line of lines) {
                             if (line.startsWith("data: ")) {
-                                const chunk = JSON.parse(line.slice(6))
-                                if (chunk === "[DONE]") break
-                                if (chunk === "[ERROR]") throw new Error("Stream error from server")
+                                const raw = line.slice(6);
+                                if (raw === "[DONE]") break
+                                if (raw === "[ERROR]") throw new Error("Stream error from server")
+                                const chunk = JSON.parse(raw);
                                 if (!streamStarted) {
                                     setLoading(false)
                                     streamStarted = true
@@ -186,6 +189,7 @@ const Chat = () => {
                     throw err
                 }
             }
+            await fetchSession();
         } catch (error: any) {
             if (error?.name === "AbortError") {
                 setMessages(prev => {
@@ -199,6 +203,13 @@ const Chat = () => {
                 return
             }
             toast.error(error?.response?.data?.message || "Something Went Wrong")
+            setMessages(prev => {
+                const last = prev[prev.length - 1]
+                if (last?.role === "assistant" && !last.content) {
+                    return prev.slice(0, -1)
+                }
+                return prev
+            })
         } finally {
             setLoading(false)
         }
@@ -252,11 +263,34 @@ const Chat = () => {
         setIsRenaming(false);
         setShowSessionMenu(false);
     }
+    const handleStarSession = async () => {
+        const isCurrentlyStarred = sessions.find(s => s.sessionId === sessionId)?.starred;
+        if (!isCurrentlyStarred && starredSessions.length >= 3) {
+            toast.error("Max 3 starred sessions allowed");
+            return;
+        }
+        await api.patch(`/api/sessions/${sessionId}/star`, {}, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        })
+        setShowSessionMenu(false);
+        await fetchSession();
+    }
+
 
     const handleDelete = async () => {
+        const CurrentIndex = sessions.findIndex(s => s.sessionId === sessionId);
+        const nextSession = sessions[CurrentIndex + 1] || sessions[CurrentIndex - 1] || null;
         await api.delete(`/api/sessions/${sessionId}`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
         })
+        setShowSessionMenu(false)
+        await fetchSession();
+        if (nextSession) {
+            handleSessionClick(nextSession)
+        } else {
+            handleNewChat();
+        }
+
     }
 
     return (
@@ -314,7 +348,7 @@ const Chat = () => {
                         setIsDark(next)
                         localStorage.setItem("theme", next ? "dark" : "light")
                     }}>
-                        {isDark ? <MdOutlineWbSunny /> : <MdOutlineWbTwilight />}
+                        {isDark ? <MdOutlineWbSunny /> :<MdOutlineDarkMode />}
                         <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
                     </button>
 
@@ -327,7 +361,22 @@ const Chat = () => {
                 </div>
                 {showSessions && (
                     <div className="sessions-list">
-                        {sessions.map((session: any) => (
+                        {starredSessions.length > 0 && (
+                            <>
+                                <div className="sessions-section-label">⭐ Starred ({starredSessions.length}/3)</div>
+                                {starredSessions.map((session: any) => (
+                                    <div
+                                        key={session.sessionId}
+                                        className={`session-item ${session.sessionId === sessionId ? "active" : ""}`}
+                                        onClick={() => !loadingSession && handleSessionClick(session)}
+                                    >
+                                        <span>{session.title || "Untitled Session"}</span>
+                                    </div>
+                                ))}
+                                <div className="sessions-divider" />
+                            </>
+                        )}
+                        {normalSessions.map((session: any) => (
                             <div
                                 key={session.sessionId}
                                 className={`session-item ${session.sessionId === sessionId ? "active" : ""}`}
@@ -395,6 +444,13 @@ const Chat = () => {
                                         setIsRenaming(true);
                                     }}>Rename</button>
                                     <button className="delete-option" onClick={handleDelete}>Delete</button>
+                                    <button
+                                        className="starred-option"
+                                        onClick={handleStarSession}
+                                        disabled={!currentSessionStarred && starredSessions.length >= 3}
+                                    >
+                                        {currentSessionStarred ? "Unstar" : "Star"}
+                                    </button>
                                 </>
                             )}
                         </div>
@@ -489,6 +545,7 @@ const Chat = () => {
                                 e.preventDefault()
                                 handleSend()
                             }
+
                         }}
                         placeholder={repoIngested ? "Ask anything about the repo..." : "Paste GitHub URL to get started..."}
                         value={input}

@@ -51,3 +51,22 @@ export const RenameSessionController = async (req: Request, res: Response) => {
     }
 }
 
+export const StarSessionController = async (req: Request, res: Response) => {
+    try {
+        const { sessionId } = req.params;
+        const userId = (req.user as any)._id;
+        const session = await SessionModel.findOne({ sessionId });
+        if (!session) return error(res, "Session not found");
+        if (!session?.starred) {
+            const starredCount = await SessionModel.countDocuments({ userId, starred: true })
+            if (starredCount >= 3) return error(res, "Max 3 Starred Sessions Allowed");
+        }
+        session.starred = !session?.starred;
+        await session.save();
+        success(res, null, session.starred ? "Session Starred" : "Session Unstarred");
+    } catch (err) {
+        error(res, "Something Went Wrong");
+
+    }
+}
+

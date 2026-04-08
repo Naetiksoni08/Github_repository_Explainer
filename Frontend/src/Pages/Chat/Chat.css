@@ -99,6 +99,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    cursor: pointer;
 }
 
 .floating-toggle:hover {
@@ -228,6 +229,11 @@
     color: white;
 }
 
+.light .collapse-sidebar:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: #333;
+}
+
 
 .text-logo {
     font-size: 17px;
@@ -302,6 +308,29 @@
 
 .theme-toggle-btn:hover {
     background: var(--surface-hover);
+}
+
+.sessions-section-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 6px 12px 2px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.sessions-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 10px 12px;
+}
+
+.light .sessions-divider {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.starred-option:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 .sessions-list {
@@ -602,6 +631,7 @@
 
 .message.user:hover .message-actions {
     opacity: 1;
+
     max-height: 30px;
     margin-top: 6px;
 }
@@ -617,7 +647,7 @@
 }
 
 .message-actions button:hover {
-    color: #ececec;
+    color: #000000;
     background: rgba(255, 255, 255, 0.1);
 }
 
@@ -776,4 +806,7 @@
     border-radius: 6px;
     cursor: pointer;
     font-size: 12px;
+}
+.starred-option{
+
 }

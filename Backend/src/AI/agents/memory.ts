@@ -39,7 +39,7 @@ async function getOrCreateSession(sessionId: string, repoUrl: string, userId: st
 async function AddMessage(sessionId: string, role: string, content: string): Promise<void> {
     const isSession = await SessionModel.findOne({ sessionId });
     if (isSession) {
-        isSession.messages.push({ role, content })
+        isSession.messages.push({ role, content, timestamp: new Date().toISOString() })
         await isSession.save();
     }
 }

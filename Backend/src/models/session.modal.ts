@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 
+
 const sessionSchema = new mongoose.Schema({
     sessionId: {
         type: String,
@@ -7,7 +8,7 @@ const sessionSchema = new mongoose.Schema({
     },
     repoUrl: {
         type: String,
-        required: true,
+        default: "",
     },
     userId: {
         type: String,
@@ -17,6 +18,10 @@ const sessionSchema = new mongoose.Schema({
         type: String,
         default: ""
     },
+    starred: {
+        type: Boolean,
+        default: false,
+    },
     messages: [{
         role: {
             type: String,
@@ -24,7 +29,10 @@ const sessionSchema = new mongoose.Schema({
         },
         content: {
             type: String,
-        }
+        },
+        timestamp: {
+            type: String,
+        },
     }]
 }, {
     timestamps: true
