@@ -3,6 +3,7 @@ import { GetSessionByIdController, GetAllSessionsController, DeleteSessionContro
 
 
 import passport from "passport";
+import { GetUserReposController } from "../controllers/github.controller";
 
 
 const router = Router()
@@ -12,6 +13,7 @@ router.get("/sessions/:sessionId", passport.authenticate("jwt", { session: false
 router.delete("/sessions/:sessionId", passport.authenticate("jwt", { session: false }), DeleteSessionController);
 router.patch("/sessions/:sessionId", passport.authenticate("jwt", { session: false }), RenameSessionController);
 router.patch("/sessions/:sessionId/star", passport.authenticate("jwt", { session: false }), StarSessionController);
+router.get("/github/repos", passport.authenticate("jwt", { session: false }), GetUserReposController);
 
 
 

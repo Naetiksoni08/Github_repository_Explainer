@@ -12,19 +12,21 @@ type Intent = "code_analyzer" | "summarizer" | "debugger" | "Rag_Agent" | "Gener
 async function* Router(sessionId: string, Query: string,repoUrl:string): AsyncGenerator<string> {
 
     const CombinedQuery = `
-Rewrite the following user query to be more specific and detailed and also Analyze the query and return ONLY one of these 
-words:  
+Rewrite the following user query to be more specific and detailed and also Analyze the query and return ONLY one of these
+words:
   "code_analyzer" → user wants code explained, analyzed, or walked through line by line
-  "summarizer"    → user asks for overview, summary, or what the repo/file does                                                             
-  "debugger"      → user asks about bugs, errors, or how to fix something                                                                   
-  "Rag_Agent"     → any question about the repository, its files, structure, or behavior                                                    
-  "General"       → ONLY for questions completely unrelated to a repository                                                                 
-                    (e.g. "write me a sorting algorithm", "explain recursion")                                                              
-                    If in doubt, use Rag_Agent       
+  "summarizer"    → user asks for overview, summary, or what the repo/file does
+  "debugger"      → user asks about bugs, errors, or how to fix something
+  "Rag_Agent"     → any question about the repository, its files, structure, or behavior
+  "General"       → ONLY for questions completely unrelated to a repository
+                    (e.g. "write me a sorting algorithm", "explain recursion")
+                    If in doubt, use Rag_Agent
+
+${repoUrl ? `Context: The user is currently working with this repository: ${repoUrl}. Any question referencing "this repo", "it", or "the project" is about this repo — do NOT classify as General.` : ""}
 
 Instructions: (IMPORTANT)
  Return ONLY valid JSON, no explanation:
-{"rewrittenQuery": "...", "intent": "one of the 5 keywords"}      
+{"rewrittenQuery": "...", "intent": "one of the 5 keywords"}
 
 Query: ${Query}
 `;
@@ -32,7 +34,9 @@ Query: ${Query}
     const FinalQuery = await llm.invoke(CombinedQuery);
 
     try {
-        const { rewrittenQuery, intent }: { rewrittenQuery: string, intent: Intent } = JSON.parse(FinalQuery.content as string)
+        let raw = FinalQuery.content as string;
+        raw = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const { rewrittenQuery, intent }: { rewrittenQuery: string, intent: Intent } = JSON.parse(raw)
 
         if (intent === "code_analyzer") {
             return yield* CodeAnalyzerAgent(sessionId, rewrittenQuery,repoUrl);

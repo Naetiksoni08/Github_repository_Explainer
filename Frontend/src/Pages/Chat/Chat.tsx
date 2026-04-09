@@ -33,6 +33,7 @@ const Chat = () => {
     const [showSessionMenu, setShowSessionMenu] = useState(false)
     const [isRenaming, setIsRenaming] = useState(false)
     const [renameValue, setRenameValue] = useState("")
+    const [githubRepos, setGithubRepos] = useState<any[]>([])
 
 
     const navigate = useNavigate();
@@ -80,13 +81,26 @@ const Chat = () => {
     const currentSessionStarred = sessions.find(s => s.sessionId === sessionId)?.starred
 
     useEffect(() => {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) setUser(JSON.parse(storedUser));
-        const savedSession = localStorage.getItem("activeSession")
-        if (savedSession) {
-            handleSessionClick({ sessionId: savedSession })
+        const init = async () => {
+            const storedUser = localStorage.getItem("user");
+            const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+            if (parsedUser) setUser(parsedUser);
+
+            const savedSession = localStorage.getItem("activeSession")
+            if (savedSession) {
+                handleSessionClick({ sessionId: savedSession })
+            }
+
+            if (parsedUser?.githubId) {
+                const res = await api.get('/api/github/repos', {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                })
+                setGithubRepos(res.data.data)
+            }
+
+            fetchSession();
         }
-        fetchSession();
+        init();
     }, [])
 
     const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -348,7 +362,7 @@ const Chat = () => {
                         setIsDark(next)
                         localStorage.setItem("theme", next ? "dark" : "light")
                     }}>
-                        {isDark ? <MdOutlineWbSunny /> :<MdOutlineDarkMode />}
+                        {isDark ? <MdOutlineWbSunny /> : <MdOutlineDarkMode />}
                         <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
                     </button>
 
@@ -410,7 +424,7 @@ const Chat = () => {
                     )}
                 </div>
             </div>
-            <div className="chat-main">
+            <div className={`chat-main ${messages.length === 0 && githubRepos.length === 0 ? 'empty-chat' : ''}`}>
                 <div className='chat-header'>
                     {isSidebarCollapsed && (
                         <button className="floating-toggle" onClick={() => setIsSidebarCollapsed(false)}>
@@ -460,11 +474,29 @@ const Chat = () => {
                     {loadingSession ? (
                         <Loader />
                     ) : messages.length === 0 ? (
-                        <div className="empty-state">
-                            <h2>Hey {user?.name?.split(" ")[0]}, 👋</h2>
-                            <h2>What repo would you like to analyze?</h2>
-                            <p>Paste a GitHub URL below to get started</p>
-                        </div>
+                        githubRepos.length > 0 ? (
+                            <div className="repo-picker">
+                                <h2>Hey {user?.name?.split(" ")[0]}, which repo to analyze?</h2>
+                                <div className="repo-grid">
+                                    {githubRepos.map((repo: any) => (
+                                        <div className="repo-card" key={repo.id} onClick={() => setInput(repo.html_url)}>
+                                            <span className="repo-name">{repo.name}</span>
+                                            <span className="repo-desc">{repo.description || "No description"}</span>
+                                            <div className="repo-meta">
+                                                {repo.language && <span className="repo-lang">{repo.language}</span>}
+                                                <span className="repo-stars">⭐ {repo.stargazers_count}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="empty-state">
+                                <h2>Hey {user?.name?.split(" ")[0]}, 👋</h2>
+                                <h2>What repo would you like to analyze?</h2>
+                                <p>Paste a GitHub URL below to get started</p>
+                            </div>
+                        )
                     ) : (
                         messages.map((msg, index) => (
                             <div key={index} className={`message ${msg.role}`}>

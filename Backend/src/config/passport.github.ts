@@ -20,8 +20,9 @@ passport.use(new GithubStrategy({
                 picture: profile.photos?.[0].value
             })
         }
-        //done callback
-        return done(null, user);
+        user.githubAceessToken = accessToken;
+        await user.save();
+        return done(null, user); // done callback
     } catch (err) {
         return done(err)
 

@@ -21,6 +21,9 @@ const userSchema = new mongoose.Schema({
         unique: true,
         sparse: true,
     },
+    githubAceessToken: {
+        type: String
+    },
     picture: {
         type: String
     },
