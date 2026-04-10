@@ -12,6 +12,9 @@ import CodeBlock from '../../utils/CodeBlock'
 import { FiCopy, FiRefreshCw } from "react-icons/fi"
 import ThinkingLoader from "../../utils/ThinkerLoader"
 import { MdOutlineWbSunny, MdOutlineDarkMode, MdKeyboardArrowDown } from 'react-icons/md';
+import { GoPencil } from "react-icons/go";
+import { RiDeleteBin5Line } from "react-icons/ri";
+import { FaRegStar } from "react-icons/fa6";
 
 const Chat = () => {
     const [messages, setMessages] = useState<any[]>([])
@@ -34,6 +37,7 @@ const Chat = () => {
     const [isRenaming, setIsRenaming] = useState(false)
     const [renameValue, setRenameValue] = useState("")
     const [githubRepos, setGithubRepos] = useState<any[]>([])
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
 
 
     const navigate = useNavigate();
@@ -239,9 +243,11 @@ const Chat = () => {
     }
 
     const handleLogout = () => {
-        localStorage.clear();
-        navigate("/auth")
         toast.success("Logged out successfully");
+        setTimeout(() => {
+            localStorage.clear();
+            navigate("/auth");
+        }, 1000);
     }
 
     const HandleSearchClick = async () => {
@@ -291,20 +297,25 @@ const Chat = () => {
     }
 
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
+        setShowSessionMenu(false)
+        setShowDeleteModal(true)
+    }
+
+    const confirmDelete = async () => {
         const CurrentIndex = sessions.findIndex(s => s.sessionId === sessionId);
         const nextSession = sessions[CurrentIndex + 1] || sessions[CurrentIndex - 1] || null;
         await api.delete(`/api/sessions/${sessionId}`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
         })
-        setShowSessionMenu(false)
+        setShowDeleteModal(false)
+        toast.success("Chat deleted")
         await fetchSession();
         if (nextSession) {
             handleSessionClick(nextSession)
         } else {
             handleNewChat();
         }
-
     }
 
     return (
@@ -336,6 +347,17 @@ const Chat = () => {
                             ) : (
                                 <p className="not-found">No sessions found</p>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showDeleteModal && (
+                <div className="delete-overlay" onClick={() => setShowDeleteModal(false)}>
+                    <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
+                        <p>Are you sure you want to delete this chat?</p>
+                        <div className="delete-modal-actions">
+                            <button className="delete-modal-cancel" onClick={() => setShowDeleteModal(false)}>No</button>
+                            <button className="delete-modal-confirm" onClick={confirmDelete}>Yes, Delete</button>
                         </div>
                     </div>
                 </div>
@@ -459,13 +481,14 @@ const Chat = () => {
                                     <button onClick={() => {
                                         setRenameValue(sessions.find(s => s.sessionId === sessionId)?.title || "");
                                         setIsRenaming(true);
-                                    }}>Rename</button>
-                                    <button className="delete-option" onClick={handleDelete}>Delete</button>
+                                    }}><GoPencil size={14} />Rename</button>
+                                    <button className="delete-option" onClick={handleDelete}><RiDeleteBin5Line size={14} />Delete</button>
                                     <button
                                         className="starred-option"
                                         onClick={handleStarSession}
                                         disabled={!currentSessionStarred && starredSessions.length >= 3}
                                     >
+                                        <FaRegStar size={14} />
                                         {currentSessionStarred ? "Unstar" : "Star"}
                                     </button>
                                 </>

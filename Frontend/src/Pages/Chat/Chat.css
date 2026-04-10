@@ -107,6 +107,11 @@
     color: white;
 }
 
+.light .floating-toggle:hover {
+    background: var(--surface);
+    color: #333;
+}
+
 .sidebar-footer {
     margin-top: auto;
     padding-top: 16px;
@@ -128,6 +133,10 @@
 
 .user-profile:hover {
     background: rgba(255, 255, 255, 0.08);
+}
+
+.light .user-profile:hover {
+    background: var(--surface);
 }
 
 .avatar {
@@ -391,6 +400,10 @@
     background: rgba(255, 255, 255, 0.08);
 }
 
+.light .session-item:hover {
+    background: var(--surface);
+}
+
 .session-item.active {
     background: var(--session-active-bg);
     border-left: 3px solid #4f46e5;
@@ -626,10 +639,21 @@
     color: var(--text);
 }
 
-.message h1 { font-size: 22px; }
-.message h2 { font-size: 19px; }
-.message h3 { font-size: 17px; }
-.message h4 { font-size: 15px; }
+.message h1 {
+    font-size: 22px;
+}
+
+.message h2 {
+    font-size: 19px;
+}
+
+.message h3 {
+    font-size: 17px;
+}
+
+.message h4 {
+    font-size: 15px;
+}
 
 .message ul,
 .message ol {
@@ -650,6 +674,71 @@
     color: var(--text);
 }
 
+
+.delete-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.delete-modal {
+    background: var(--modal-bg);
+    border: 1px solid var(--modal-border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    max-width: 340px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.delete-modal p {
+    color: var(--text);
+    font-size: 15px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.delete-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.delete-modal-cancel {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.delete-modal-cancel:hover {
+    background: var(--surface-hover);
+}
+
+.delete-modal-confirm {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    background: #e53e3e;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.delete-modal-confirm:hover {
+    background: #c53030;
+}
 
 .search-overlay {
     position: fixed;
@@ -886,7 +975,9 @@
 }
 
 .session-menu button {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     width: 100%;
     text-align: left;
     padding: 8px 12px;
@@ -936,4 +1027,97 @@
     border-radius: 6px;
     cursor: pointer;
     font-size: 12px;
+}
+
+/* ── MOBILE RESPONSIVE ── */
+@media (max-width: 768px) {
+
+    /* Sidebar overlays the screen on mobile */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        z-index: 200;
+        width: 75vw;
+        max-width: 300px;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .sidebar.hidden {
+        width: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    /* Chat main takes full width */
+    .chat-main {
+        width: 100%;
+    }
+
+    /* Tighter message padding on mobile */
+    .messages-area {
+        padding: 20px 4%;
+        gap: 18px;
+    }
+
+    /* Messages take full width */
+    .message {
+        max-width: 92%;
+    }
+
+    .message.assistant {
+        max-width: 96%;
+    }
+
+    /* Input area full width with less padding */
+    .input-area {
+        padding: 12px 4%;
+    }
+
+    /* Empty chat centering adjustments */
+    .chat-main.empty-chat .messages-area {
+        padding: 20px 6%;
+    }
+
+    /* Empty state text smaller */
+    .empty-state h2 {
+        font-size: 18px;
+        text-align: center;
+    }
+
+    /* Repo picker on mobile */
+    .repo-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .repo-picker {
+        padding: 20px 4%;
+    }
+
+    .repo-picker h2 {
+        font-size: 18px;
+        text-align: center;
+    }
+
+    /* Search modal full width */
+    .search-modal {
+        width: 92%;
+    }
+
+    /* Session menu wider on mobile */
+    .session-menu {
+        min-width: 200px;
+    }
+
+    /* Code blocks scroll on mobile */
+    .code-block-wrapper {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    /* Chat header padding */
+    .chat-header {
+        padding: 12px 14px;
+    }
 }

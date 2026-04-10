@@ -73,7 +73,7 @@ function Home() {
                     <div className="hero-actions">
                         <button className="get-started-btn" onClick={() => {
                             if (!user) {
-                                toast("⚠️ Please SignIn To Continue !")
+                                toast.error("Sign in to get started")
                             } else {
                                 navigate("/chat")
                             }

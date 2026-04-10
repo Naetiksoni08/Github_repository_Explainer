@@ -6,11 +6,14 @@ async function getOrCreateSession(sessionId: string, repoUrl: string, userId: st
     const session = await SessionModel.findOne({ sessionId });
     if (!session) {
 
-        const title = query? (await llm.invoke(`Give a 5-6 word title for a chat session where the user asked: "${query}" about this repo: ${repoUrl}. Return  
-            ONLY the title.`)).content as string                                                                                                  
-                : repoUrl.split("/").pop() || "New Chat" 
-                
-        // const title = titleResponse.content as string;
+        let title: string;
+        if (repoUrl) {
+            // Extract repo name directly from URL e.g. https://github.com/user/my-repo → "my-repo"
+            title = repoUrl.split("/").filter(Boolean).pop() || "New Chat";
+        } else {
+            // No repo — generate a short conversational title from the query
+            title = (await llm.invoke(`Generate a short 4-5 word chat title for this message: "${query}". Return ONLY the title, no quotes, no punctuation.`)).content as string;
+        }
 
         const newSession = await SessionModel.create({
             sessionId,

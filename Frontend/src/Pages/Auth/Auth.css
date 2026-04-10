@@ -79,6 +79,8 @@
     color: #1a1612;
     margin-bottom: 6px;
     letter-spacing: -0.3px;
+    text-align: center;
+    padding-top: -10px;
 }
 
 .card-subtitle {
@@ -152,7 +154,7 @@
 
 .back-to-home {
     cursor: pointer;
-   font-size: 17px;
+    font-size: 17px;
     position: absolute;
     top: 50px;
     left: 70px;
@@ -161,4 +163,12 @@
     gap: 4px;
     background: none;
     border: none;
+    color: inherit;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.back-to-home:hover {
+    background: rgba(0, 0, 0, 0.07);
 }
