@@ -31,9 +31,10 @@ Then give your actual response.
     - Avoid unnecessary details
     - Can summarize: repo overview, specific code block, or chat history
 
-- Before each section, add a relevant question as a heading using markdown bold
-- Example: Instead of just "Purpose: ...", write "**What is the purpose of this repository?**" then answer
-- Example: Instead of "Functionalities: ...", write "**What does this repository do?**" then answer
+- Before each section, write a relevant heading using markdown ## (NOT bold, NOT strong)
+- Example: Instead of "**Overview:**", write "## What does this repository do?" then answer
+- Example: Instead of "**Key Points:**", write "## Key highlights" then answer
+- NEVER use **bold** for section headings — always use ## or ### markdown headings
 
 CRITICAL FORMATTING RULES - FOLLOW EXACTLY:
 - NEVER wrap single words, variable names, or short phrases in code blocks

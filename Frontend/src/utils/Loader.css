@@ -1,42 +1,37 @@
 .skeleton-loader {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     padding: 4px 0;
 }
 
 .skeleton-line {
     height: 14px;
-    /* ← missing! */
     border-radius: 6px;
-    /* ← missing! */
     background: linear-gradient(90deg, #383838 25%, #505050 50%, #383838 75%);
     background-size: 200% 100%;
-    /* ← missing! */
     animation: shimmer 1.5s infinite;
-    /* ← missing! */
 }
 
-.w-80 {
-    width: 80%;
-}
+.skeleton-loader .skeleton-line:nth-child(1) { opacity: 1; }
+.skeleton-loader .skeleton-line:nth-child(2) { opacity: 0.85; }
+.skeleton-loader .skeleton-line:nth-child(3) { opacity: 0.7; }
+.skeleton-loader .skeleton-line:nth-child(4) { opacity: 0.55; }
+.skeleton-loader .skeleton-line:nth-child(5) { opacity: 0.4; }
+.skeleton-loader .skeleton-line:nth-child(6) { opacity: 0.25; }
+.skeleton-loader .skeleton-line:nth-child(7) { opacity: 0.12; }
 
-.w-60 {
-    width: 60%;
-}
-
-.w-70 {
-    width: 70%;
-}
+.w-80 { width: 80%; }
+.w-75 { width: 75%; }
+.w-70 { width: 70%; }
+.w-65 { width: 65%; }
+.w-60 { width: 60%; }
+.w-50 { width: 50%; }
+.w-40 { width: 40%; }
 
 @keyframes shimmer {
-    0% {
-        background-position: 200% 0;
-    }
-
-    100% {
-        background-position: -200% 0;
-    }
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 
 .light .skeleton-line {

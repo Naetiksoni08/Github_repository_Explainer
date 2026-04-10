@@ -32,9 +32,10 @@ Then give your actual response.
     - Do not make up information
 
 
-- Before each section, add a relevant question as a heading using markdown bold
-- Example: Instead of just "Purpose: ...", write "**What is the purpose of this repository?**" then answer
-- Example: Instead of "Functionalities: ...", write "**What does this repository do?**" then answer
+- Before each section, write a relevant heading using markdown ## (NOT bold, NOT strong)
+- Example: Instead of "**Purpose:**", write "## What is the purpose of this repository?" then answer
+- Example: Instead of "**Functionalities:**", write "## What does this repository do?" then answer
+- NEVER use **bold** for section headings — always use ## or ### markdown headings
 
 
 CRITICAL FORMATTING RULES - FOLLOW EXACTLY:

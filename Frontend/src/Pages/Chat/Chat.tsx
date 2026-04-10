@@ -362,7 +362,7 @@ const Chat = () => {
                         setIsDark(next)
                         localStorage.setItem("theme", next ? "dark" : "light")
                     }}>
-                        {isDark ? <MdOutlineWbSunny /> : <MdOutlineDarkMode />}
+                        {isDark ? <MdOutlineWbSunny size={20} /> : <MdOutlineDarkMode size={20} />}
                         <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
                     </button>
 
@@ -377,7 +377,7 @@ const Chat = () => {
                     <div className="sessions-list">
                         {starredSessions.length > 0 && (
                             <>
-                                <div className="sessions-section-label">⭐ Starred ({starredSessions.length}/3)</div>
+                                <div className="sessions-section-label">Starred ({starredSessions.length}/3)</div>
                                 {starredSessions.map((session: any) => (
                                     <div
                                         key={session.sessionId}
@@ -424,17 +424,20 @@ const Chat = () => {
                     )}
                 </div>
             </div>
-            <div className={`chat-main ${messages.length === 0 && githubRepos.length === 0 ? 'empty-chat' : ''}`}>
+            <div className={`chat-main ${messages.length === 0 && githubRepos.length === 0 && !loadingSession ? 'empty-chat' : ''}`}>
                 <div className='chat-header'>
                     {isSidebarCollapsed && (
                         <button className="floating-toggle" onClick={() => setIsSidebarCollapsed(false)}>
                             <FiSidebar size={20} />
                         </button>
                     )}
-                    <span className='chat-title' onClick={() => setShowSessionMenu(!showSessionMenu)}>
-                        {sessions.find(s => s.sessionId === sessionId)?.title || "New Chat"}
-                        <MdKeyboardArrowDown size={20} />
-                    </span>
+                    {messages.length > 0 && (
+                        <span className='chat-title' onClick={() => setShowSessionMenu(!showSessionMenu)}>
+                            {sessions.find(s => s.sessionId === sessionId)?.title || "New Chat"}
+                            <MdKeyboardArrowDown size={20} />
+                        </span>
+
+                    )}
 
                     {showSessionMenu && (
                         <div className='session-menu'>
@@ -494,7 +497,6 @@ const Chat = () => {
                             <div className="empty-state">
                                 <h2>Hey {user?.name?.split(" ")[0]}, 👋</h2>
                                 <h2>What repo would you like to analyze?</h2>
-                                <p>Paste a GitHub URL below to get started</p>
                             </div>
                         )
                     ) : (
@@ -569,25 +571,27 @@ const Chat = () => {
                     )}
                     <div ref={messagesEndRef}></div>
                 </div>
-                <div className="input-area">
-                    <textarea
-                        ref={textareaRef}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault()
-                                handleSend()
-                            }
+                {!loadingSession && (
+                    <div className="input-area">
+                        <textarea
+                            ref={textareaRef}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault()
+                                    handleSend()
+                                }
 
-                        }}
-                        placeholder={repoIngested ? "Ask anything about the repo..." : "Paste GitHub URL to get started..."}
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        rows={1}
-                    />
-                    <button onClick={loading ? handleAbort : handleSend}>
-                        {loading ? <FiSquare size={16} /> : <FiSend size={16} />}
-                    </button>
-                </div>
+                            }}
+                            placeholder={repoIngested ? "Ask anything about the repo..." : "Paste GitHub URL to get started..."}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            rows={1}
+                        />
+                        <button onClick={loading ? handleAbort : handleSend}>
+                            {loading ? <FiSquare size={16} /> : <FiSend size={16} />}
+                        </button>
+                    </div>
+                )}
             </div>
         </div >
     )

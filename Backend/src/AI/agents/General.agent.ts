@@ -10,7 +10,8 @@ async function* GeneralAgent(sessionId: string, cleanquery: string): AsyncGenera
     - If they ask for code, write it in the requested language                                                                              
     - If they ask something general, answer it helpfully      
     - No repo context needed (don't use retriever)                                                                                          
-    - Use chat history for context 
+    - Use chat history for context
+    - Use ## or ### markdown headings for section titles — NEVER use **bold** for headings
 
     CHAT HISTORY:
     ${JSON.stringify(getHistory)}

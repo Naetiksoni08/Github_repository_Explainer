@@ -236,12 +236,13 @@
 
 
 .text-logo {
-    font-size: 17px;
+    font-size: 20px;
     font-weight: 500;
     color: var(--text);
     letter-spacing: 0.2px;
     cursor: pointer;
     flex: 1;
+    padding-left: 11px;
 }
 
 .new-chat-btn {
@@ -319,7 +320,7 @@
 }
 
 .sessions-divider {
-    height: 1px;
+    height: 3px;
     background: rgba(255, 255, 255, 0.08);
     margin: 10px 12px;
 }
@@ -348,7 +349,7 @@
     align-items: center;
     justify-content: flex-start;
     gap: 6px;
-    padding: 4px 8px;
+    padding: 4px 11px;
     margin-top: 16px;
     margin-bottom: 4px;
 
@@ -423,6 +424,10 @@
     max-height: 180px;
 }
 
+.chat-main.empty-chat .input-area {
+    margin-top: -40px;
+}
+
 .messages-area {
     flex: 1;
     overflow-y: auto;
@@ -445,7 +450,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 15px;
-    padding: 16px 20px;
+    padding: 12px 26px;
     color: var(--text);
     font-size: 15px;
     outline: none;
@@ -459,7 +464,6 @@
 .input-area textarea {
     min-height: 52px;
     max-height: 200px;
-    /* ← isse zyada nahi badhega */
     overflow-y: auto;
     resize: none;
 }
@@ -555,7 +559,8 @@
     margin-top: 4px;
 }
 
-.repo-lang, .repo-stars {
+.repo-lang,
+.repo-stars {
     font-size: 11px;
     color: var(--text-muted);
 }
@@ -568,6 +573,7 @@
     height: 100%;
     text-align: center;
     gap: 12px;
+    margin-bottom: 20px;
 }
 
 .empty-state h2 {
@@ -576,10 +582,10 @@
     color: var(--text);
 }
 
-.empty-state p {
+/* .empty-state p {
     font-size: 14px;
     color: var(--text-faint);
-}
+} */
 
 .message {
     display: flex;
@@ -605,7 +611,43 @@
 
 .message p {
     font-size: 15px;
-    line-height: 1.6;
+    line-height: 1.8;
+    margin-bottom: 10px;
+}
+
+.message h1,
+.message h2,
+.message h3,
+.message h4 {
+    font-weight: 700;
+    line-height: 1.4;
+    margin-top: 18px;
+    margin-bottom: 8px;
+    color: var(--text);
+}
+
+.message h1 { font-size: 22px; }
+.message h2 { font-size: 19px; }
+.message h3 { font-size: 17px; }
+.message h4 { font-size: 15px; }
+
+.message ul,
+.message ol {
+    padding-left: 20px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.message li {
+    font-size: 15px;
+    line-height: 1.7;
+}
+
+.message strong {
+    font-weight: 600;
+    color: var(--text);
 }
 
 
@@ -879,10 +921,11 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 6px 8px;
+    padding: 6px 10px;
     color: var(--text);
     font-size: 13px;
     outline: none;
+    text-align: left;
 }
 
 .rename-input-row button {

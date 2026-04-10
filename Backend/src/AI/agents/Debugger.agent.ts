@@ -32,9 +32,10 @@ Then give your actual response.
     - Avoid unnecessary details
     - Suggest fixes to the bug with code example
 
-- Before each section, add a relevant question as a heading using markdown bold
-- Example: Instead of just "Purpose: ...", write "**What is the purpose of this repository?**" then answer
-- Example: Instead of "Functionalities: ...", write "**What does this repository do?**" then answer
+- Before each section, write a relevant heading using markdown ## (NOT bold, NOT strong)
+- Example: Instead of "**Root Cause:**", write "## What is the root cause?" then answer
+- Example: Instead of "**Fix:**", write "## How to fix this?" then answer
+- NEVER use **bold** for section headings — always use ## or ### markdown headings
     
    Return a SHORT, direct answer. Less is more.`
 
