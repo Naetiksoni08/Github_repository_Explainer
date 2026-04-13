@@ -6,7 +6,7 @@ import api from '../../utils/axios';
 import ReactMarkdown from 'react-markdown'
 import Loader from '../../utils/Loader';
 import { useNavigate } from 'react-router-dom';
-import { FiSidebar } from "react-icons/fi";
+import { FiSidebar, FiDownload } from "react-icons/fi";
 import { IoIosSearch } from "react-icons/io";
 import CodeBlock from '../../utils/CodeBlock'
 import { FiCopy, FiRefreshCw } from "react-icons/fi"
@@ -15,6 +15,8 @@ import { MdOutlineWbSunny, MdOutlineDarkMode, MdKeyboardArrowDown } from 'react-
 import { GoPencil } from "react-icons/go";
 import { RiDeleteBin5Line } from "react-icons/ri";
 import { FaRegStar } from "react-icons/fa6";
+import { jsPDF } from 'jspdf';
+
 
 const Chat = () => {
     const [messages, setMessages] = useState<any[]>([])
@@ -317,6 +319,88 @@ const Chat = () => {
             handleNewChat();
         }
     }
+    const ExportPdfHandler = async () => {
+        if (messages.length === 0) return
+        const sessionTitle = sessions.find(s => s.sessionId === sessionId)?.title || "Chat Export";
+        const doc = new jsPDF({ unit: "mm", format: "a4" })
+
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
+        const margin = 15
+        const maxWidth = pageWidth - margin * 2
+        let y = 20
+        // Title
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(18)
+        doc.text(sessionTitle, margin, y)
+        y += 8
+
+        // Date subtitle
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(9)
+        doc.setTextColor(120, 120, 120)
+        doc.text(`Exported on ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}`, margin, y)
+        y += 10
+        // Separator
+        doc.setDrawColor(200, 200, 200)
+        doc.line(margin, y, pageWidth - margin, y)
+        y += 8
+
+        for (const msg of messages) {
+            const isUser = msg.role === "user"
+            const label = isUser ? "You" : "CodeLens AI"
+
+            // Page overflow check
+            if (y + 20 > pageHeight - 15) {
+                doc.addPage()
+                y = 15
+            }
+
+            // Role label
+            doc.setFont("helvetica", "bold")
+            doc.setFontSize(11)
+            doc.setTextColor(isUser ? 80 : 30, isUser ? 80 : 120, isUser ? 80 : 80)
+            doc.text(label, margin, y)
+            y += 6
+            // Clean markdown from content
+            const cleaned = (msg.content || "")
+                .replace(/```[\s\S]*?```/g, (match: string) => {
+                    return match.replace(/```\w*\n?/g, "").replace(/```/g, "").trim()
+                })
+                .replace(/\*\*(.*?)\*\*/g, "$1")
+                .replace(/\*(.*?)\*/g, "$1")
+                .replace(/#{1,6}\s/g, "")
+                .replace(/`([^`]+)`/g, "$1")
+
+            // Write content with line wrapping
+            doc.setFont("helvetica", "normal")
+            doc.setFontSize(10)
+            doc.setTextColor(50, 50, 50)
+
+            const lines = doc.splitTextToSize(cleaned, maxWidth)
+            for (const line of lines) {
+                if (y + 6 > pageHeight - 15) {
+                    doc.addPage()
+                    y = 15
+                }
+                doc.text(line, margin, y)
+                y += 5
+            }
+
+            y += 6
+            if (y + 4 > pageHeight - 15) {
+                doc.addPage()
+                y = 15
+            }
+            doc.setDrawColor(230, 230, 230)
+            doc.line(margin, y, pageWidth - margin, y)
+            y += 6
+        }
+
+        const filename = sessionTitle.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)
+        doc.save(`${filename}.pdf`)
+        toast.success("PDF downloaded!")
+    }
 
     return (
 
@@ -494,6 +578,12 @@ const Chat = () => {
                                 </>
                             )}
                         </div>
+                    )}
+                    {messages.length > 0 && (
+                        <button className="export-pdf-btn" onClick={() => ExportPdfHandler()}>
+                            <FiDownload size={20} />
+                            Export PDF
+                        </button>
                     )}
                 </div>
                 <div className="messages-area">

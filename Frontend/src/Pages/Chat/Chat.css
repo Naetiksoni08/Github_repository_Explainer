@@ -849,7 +849,6 @@
 
 .message.user:hover .message-actions {
     opacity: 1;
-
     max-height: 30px;
     margin-top: 6px;
 }
@@ -865,7 +864,12 @@
 }
 
 .message-actions button:hover {
-    color: #000000;
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.message-actions button:hover {
+    color: white;
     background: rgba(255, 255, 255, 0.1);
 }
 
@@ -1120,4 +1124,24 @@
     .chat-header {
         padding: 12px 14px;
     }
+}
+
+.export-pdf-btn {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.export-pdf-btn:hover {
+    background: var(--surface);
+    color: var(--text);
 }
