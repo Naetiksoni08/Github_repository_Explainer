@@ -2,17 +2,22 @@ import { PineconeStore } from "@langchain/pinecone";
 import { Pinecone as PineconeClient } from "@pinecone-database/pinecone";
 import { documentEmbeddings } from "../embeddings/embeddings";
 import { Document } from "@langchain/core/documents";
-import crypto from "node:crypto"; 
+import crypto from "node:crypto";
 
-const pinecone = new PineconeClient({
-    apiKey: process.env.PINECONE_API_KEY! 
-});
 
-const pineconeIndex = pinecone.index("github"); // Lowercase 'index' is preferred in v7
+let pineconeIndex: any = null;
+
+function getPineconeIndex() {
+    if (!pineconeIndex) {
+        const pinecone = new PineconeClient({ apiKey: process.env.PINECONE_API_KEY! });
+        pineconeIndex = pinecone.index("github");
+    }
+    return pineconeIndex;
+}
 
 async function storeDocuments(docs: Document[], repoUrl: string) {
     const validDocs = docs.filter(doc => doc.pageContent.trim().length > 0);
-    
+
     if (validDocs.length === 0) throw new Error("No valid docs");
 
     // 1. Generate all embeddings first
@@ -23,12 +28,12 @@ async function storeDocuments(docs: Document[], repoUrl: string) {
     const vectors = validDocs.map((doc, i) => {
         // Generate hash for THIS specific document chunk
         const hash = crypto.createHash('sha256').update(doc.pageContent).digest('hex');
-        
+
         return {
             id: `doc-${hash}-${i}`, // Unique but repeatable for the same content
             values: embeddings[i],
-            metadata: { 
-                text: doc.pageContent, 
+            metadata: {
+                text: doc.pageContent,
                 source: doc.metadata?.source || "github",
                 repoUrl: repoUrl // Good practice to store the repo URL in metadata
             }
@@ -36,14 +41,13 @@ async function storeDocuments(docs: Document[], repoUrl: string) {
     });
 
     // 3. Upsert using the v7.x object syntax
-    await pineconeIndex.upsert({ records: vectors });
-    
+    await getPineconeIndex().upsert({ records: vectors });
     console.log(`Stored ${vectors.length} vectors in Pinecone for: ${repoUrl}`);
 }
 
 async function getVectorStore(): Promise<PineconeStore> {
     return await PineconeStore.fromExistingIndex(documentEmbeddings, {
-        pineconeIndex
+        pineconeIndex: getPineconeIndex()
     });
 }
 

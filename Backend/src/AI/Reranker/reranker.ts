@@ -6,4 +6,6 @@ const rerank = new CohereRerank({
     topN: 5
 })
 
+
+
 export default rerank;

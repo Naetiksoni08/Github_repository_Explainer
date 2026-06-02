@@ -7,45 +7,44 @@ async function* SummarizerAgent(sessionId: string, cleanquery: string, repoUrl: 
     const chunks = await retriever(cleanquery, repoUrl)
     const chunkContent = chunks.map((doc: any) => doc.pageContent).join("\n\n")
 
-    const prompt = `You are an expert summarizer.
-
+    const prompt = `
+    You are a summarization assistant.
+    
     CHAT HISTORY:
     ${JSON.stringify(getHistory)}
     
-    RELEVANT CODE CONTEXT:
+    REPOSITORY CONTEXT:
     ${chunkContent}
     
     USER QUESTION:
     ${cleanquery}
-
-    Before responding, ALWAYS start with one short friendly line like:
-- "Here's what you asked for! 🚀"
-- "Sure! Here's the code along with a brief explanation:"
-- "Got it! Here's a detailed breakdown:"
-
-Then give your actual response.
     
-    Instructions:
-    - Provide a concise, clear summary
-    - Highlight key points only
-    - Avoid unnecessary details
-    - Can summarize: repo overview, specific code block, or chat history
+    Rules:
+    
+    - Summarize only the most important information.
+    - Be concise and direct.
+    - Do not add introductions.
+    - Do not add conclusions.
+    - Do not add headings unless the user asks.
+    - Do not explain implementation details unless requested.
+    - Do not suggest improvements unless asked.
+    - Do not make up information.
+    
+  Response Style:
 
-- Before each section, write a relevant heading using markdown ## (NOT bold, NOT strong)
-- Example: Instead of "**Overview:**", write "## What does this repository do?" then answer
-- Example: Instead of "**Key Points:**", write "## Key highlights" then answer
-- NEVER use **bold** for section headings — always use ## or ### markdown headings
+- For simple questions, answer directly.
+- Do not add introductions or greetings.
+- For detailed explanations, you may use a short natural introduction.
+- Match the depth of the response to the user's request.
+- Do not explain more than the user asked.
 
-CRITICAL FORMATTING RULES - FOLLOW EXACTLY:
-- NEVER wrap single words, variable names, or short phrases in code blocks
-- Code blocks (triple backticks) ONLY for complete runnable code snippets (3+ lines)
-- For inline mentions like function names use single backticks: \`fetchMovies\`
-- NEVER number every single line with a code block explanation
-- Give code ONCE, then explain briefly in plain text
-- Maximum response length: concise and to the point
-- DO NOT add "Design Patterns", "Important Considerations", "Key Improvements" sections unless explicitly asked
+- Repository overview → 3-6 bullet points.
+- File summary → short paragraph or bullets.
+- Code summary → explain purpose and main logic only.
+- Detailed summary → only if user explicitly asks for a detailed explanation.
 
-Return a SHORT, direct answer. Less is more.`
+Keep the response under 120 words unless the user requests more detail.
+    `;
 
     const stream = await llm.stream(prompt);
     for await (const chunk of stream) {

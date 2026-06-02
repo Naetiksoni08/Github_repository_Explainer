@@ -4,6 +4,7 @@ import { FiCheck, FiEdit, FiSend, FiSquare } from "react-icons/fi";
 import toast from 'react-hot-toast'
 import api from '../../utils/axios';
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm';
 import Loader from '../../utils/Loader';
 import { useNavigate } from 'react-router-dom';
 import { FiSidebar, FiDownload } from "react-icons/fi";
@@ -116,22 +117,23 @@ const Chat = () => {
 
     const handleSend = async () => {
         if (!input.trim()) return
-        const userMessage = { role: "user", content: input }
+        const currentInput = input 
+        const userMessage = { role: "user", content: currentInput }
         setMessages(prev => [...prev, userMessage])
         setInput("")
         setLoading(true)
         localStorage.setItem("activeSession", sessionId);
 
-        await new Promise(res => setTimeout(res, 50))
+        await new Promise(res => setTimeout(res, 2000))
 
         try {
             const token = localStorage.getItem("token");
 
-            const isGithubUrl = input.trim().startsWith("https://github.com") || input.trim().includes("github.com/")
+            const isGithubUrl = currentInput.trim().startsWith("https://github.com") || currentInput.trim().includes("github.com/")
 
             if (!repoIngested && isGithubUrl) {
                 // INGEST FLOW
-                const trimmedUrl = input.trim()
+                const trimmedUrl = currentInput.trim()
                 setRepoUrl(trimmedUrl)
                 await api.post(
                     '/api/ingest',
@@ -143,9 +145,6 @@ const Chat = () => {
                 setMessages(prev => [...prev, aiMessage])
                 toast.success("Repository ready!")
                 await fetchSession();
-                setTimeout(() => {
-                    setMessages(prev => prev.filter(msg => msg.content !== aiMessage.content))
-                }, 8000)
             } else {
                 // CHAT FLOW — SSE streaming
                 setMessages(prev => [...prev, { role: "assistant", content: "", timestamp: new Date().toISOString() }])
@@ -156,7 +155,7 @@ const Chat = () => {
                         "Content-Type": "application/json",
                         "Authorization": `Bearer ${token}`
                     },
-                    body: JSON.stringify({ sessionId, query: input, repoUrl }),
+                    body: JSON.stringify({ sessionId, query: currentInput, repoUrl }),
                     signal: abortControllerRef.current.signal
                 })
 
@@ -616,6 +615,7 @@ const Chat = () => {
                         messages.map((msg, index) => (
                             <div key={index} className={`message ${msg.role}`}>
                                 <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
                                     components={{
                                         code({ className, children }) {
                                             return (
@@ -630,7 +630,7 @@ const Chat = () => {
                                 </ReactMarkdown>
 
                                 {msg.interrupted && (
-                                    <span className="interrupted-text">User interrupted the response</span>
+                                    <span className="interrupted-text">AI's response was interrupted</span>
                                 )}
 
                                 {msg.role === "user" && (

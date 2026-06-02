@@ -6,53 +6,172 @@ import Rag_Agent from "./Rag.agent";
 import SummarizerAgent from "./Summary.agent";
 
 
-
 type Intent = "code_analyzer" | "summarizer" | "debugger" | "Rag_Agent" | "General"
 
-async function* Router(sessionId: string, Query: string,repoUrl:string): AsyncGenerator<string> {
+async function* Router(sessionId: string, Query: string, repoUrl: string): AsyncGenerator<string> {
 
-    const CombinedQuery = `
-Rewrite the following user query to be more specific and detailed and also Analyze the query and return ONLY one of these
-words:
-  "code_analyzer" → user wants code explained, analyzed, or walked through line by line
-  "summarizer"    → user asks for overview, summary, or what the repo/file does
-  "debugger"      → user asks about bugs, errors, or how to fix something
-  "Rag_Agent"     → any question about the repository, its files, structure, or behavior
-  "General"       → ONLY for questions completely unrelated to a repository
-                    (e.g. "write me a sorting algorithm", "explain recursion")
-                    If in doubt, use Rag_Agent
+    console.log("Router called with query:", Query);
 
-${repoUrl ? `Context: The user is currently working with this repository: ${repoUrl}. Any question referencing "this repo", "it", or "the project" is about this repo — do NOT classify as General.` : ""}
+    const RouterPrompt = `
+Classify the query into one category:
 
-Instructions: (IMPORTANT)
- Return ONLY valid JSON, no explanation:
-{"rewrittenQuery": "...", "intent": "one of the 5 keywords"}
+- code_analyzer
+- summarizer
+- debugger
+- Rag_Agent
+- General
 
-Query: ${Query}
+Definitions:
+
+code_analyzer:
+Explain code, functions, classes, implementation.
+
+summarizer:
+Repository overview, file summary, project summary.
+
+debugger:
+Errors, bugs, exceptions, fixes.
+
+Rag_Agent:
+Repository questions, architecture, files, behavior.
+
+General:
+Questions unrelated to the repository.
+
+Rules:
+- If a repository URL is present and the query could reasonably refer to the repository, choose Rag_Agent.
+- If no repository URL is present and the intent is unclear, choose General.
+
+Return ONLY:
+
+{"intent":"Rag_Agent"}
+
+Query:
+${Query}
+
+Repository:
+${repoUrl || "None"}
 `;
 
-    const FinalQuery = await llm.invoke(CombinedQuery);
+
 
     try {
-        let raw = FinalQuery.content as string;
-        raw = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-        const { rewrittenQuery, intent }: { rewrittenQuery: string, intent: Intent } = JSON.parse(raw)
+        const q = Query.toLowerCase().trim();
+        if (
+            q.includes("error") ||
+            q.includes("bug") ||
+            q.includes("exception") ||
+            q.includes("stack trace") ||
+            q.includes("not working") ||
+            q.includes("fails") ||
+            q.includes("failing") ||
+            q.includes("crash") ||
+            q.includes("crashes")
+        ) {
+            console.log("Fast Route → DebuggerAgent");
 
-        if (intent === "code_analyzer") {
-            return yield* CodeAnalyzerAgent(sessionId, rewrittenQuery,repoUrl);
-        } else if (intent === "summarizer") {
-            return yield* SummarizerAgent(sessionId, rewrittenQuery,repoUrl)
-        } else if (intent === "debugger") {
-            return yield* DebuggerAgent(sessionId, rewrittenQuery,repoUrl)
-        } else if (intent === "Rag_Agent") {
-            return yield* Rag_Agent(sessionId, rewrittenQuery,repoUrl)
-        } else {
-            return yield* GeneralAgent(sessionId, rewrittenQuery);
+            return yield* DebuggerAgent(
+                sessionId,
+                Query,
+                repoUrl
+            );
+        }
+
+        if (
+            q.includes("what does this repo do") ||
+            q.includes("repository overview") ||
+            q.includes("repo overview") ||
+            q.includes("summarize") ||
+            q.includes("summary") ||
+            q.includes("overview") ||
+            q.includes("what does this repository do") ||
+            q.includes("tell me about this repo") ||
+            q.includes("tell me about this repository") ||
+            q.includes("explain this project") ||
+            q === "overview" ||
+            q === "summary"
+        ) {
+            console.log("Fast Route → SummarizerAgent");
+
+            return yield* SummarizerAgent(
+                sessionId,
+                Query,
+                repoUrl
+            );
+        }
+
+        if (
+            q.includes("explain this code") ||
+            q.includes("explain this function") ||
+            q.includes("walk me through") ||
+            q.includes("how does this function work") ||
+            q.includes("analyze this code") ||
+            q.includes("explain the implementation") ||
+            q.includes("explain this file") ||
+            q.includes("explain this class") ||
+            q.includes("what does this function do") ||
+            q.includes("how does this class work")
+        ) {
+            console.log("Fast Route → CodeAnalyzerAgent");
+
+            return yield* CodeAnalyzerAgent(
+                sessionId,
+                Query,
+                repoUrl
+            );
+        }
+        const result = await llm.invoke(RouterPrompt);
+
+        let raw = result.content as string;
+        raw = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const { intent }: { intent: Intent } = JSON.parse(raw);
+
+        console.log("Intent:", intent)
+
+
+        switch (intent) {
+            case "code_analyzer":
+                return yield* CodeAnalyzerAgent(
+                    sessionId,
+                    Query,
+                    repoUrl
+                );
+
+            case "summarizer":
+                return yield* SummarizerAgent(
+                    sessionId,
+                    Query,
+                    repoUrl
+                );
+
+            case "debugger":
+                return yield* DebuggerAgent(
+                    sessionId,
+                    Query,
+                    repoUrl
+                );
+
+            case "Rag_Agent":
+                return yield* Rag_Agent(
+                    sessionId,
+                    Query,
+                    repoUrl
+                );
+
+            default:
+                return yield* GeneralAgent(
+                    sessionId,
+                    Query
+                );
         }
     } catch (error) {
-        return yield* GeneralAgent(sessionId, Query);
-    }
+        console.error("Router Error:", error);
 
+        return yield* GeneralAgent(
+            sessionId,
+            Query
+        );
+    }
 }
 
 export default Router;
