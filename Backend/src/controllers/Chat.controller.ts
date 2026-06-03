@@ -30,8 +30,14 @@ const ChatController = async (req: Request, res: Response) => {
         await AddMessage(sessionId, "assistant", fullresponse)
         res.write("data: [DONE]\n\n")
         res.end();
-    } catch (err) {
+    } catch (err:any) {
         if (!res.headersSent) {
+
+            if(err?.status===503) {
+                return res.status(503).json({
+                    message:"AI service is temporarily unavailable. Please try again in a few moments"
+                });
+            }
             error(res, err)
         } else {
             res.write("data: [ERROR]\n\n")

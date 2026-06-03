@@ -117,7 +117,7 @@ const Chat = () => {
 
     const handleSend = async () => {
         if (!input.trim()) return
-        const currentInput = input 
+        const currentInput = input
         const userMessage = { role: "user", content: currentInput }
         setMessages(prev => [...prev, userMessage])
         setInput("")
@@ -482,7 +482,6 @@ const Chat = () => {
                     <div className="sessions-list">
                         {starredSessions.length > 0 && (
                             <>
-                                <div className="sessions-section-label">Starred ({starredSessions.length}/3)</div>
                                 {starredSessions.map((session: any) => (
                                     <div
                                         key={session.sessionId}
@@ -615,13 +614,25 @@ const Chat = () => {
                         messages.map((msg, index) => (
                             <div key={index} className={`message ${msg.role}`}>
                                 <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
+                                    remarkPlugins={[remarkGfm]}
                                     components={{
                                         code({ className, children }) {
                                             return (
                                                 <CodeBlock className={className}>
                                                     {children}
                                                 </CodeBlock>
+                                            )
+                                        },
+                                        a({ href, children }) {
+                                            return (
+                                                <a
+                                                    href={href}
+                                                    target='_blank'
+                                                    rel="noopener noreferrer"
+                                                    className='markdown-link'
+                                                >
+                                                    {children}
+                                                </a>
                                             )
                                         }
                                     }}

@@ -164,14 +164,18 @@ ${repoUrl || "None"}
                     Query
                 );
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error("Router Error:", error);
 
-        return yield* GeneralAgent(
-            sessionId,
-            Query
-        );
+        if (error?.status === 429) {
+            yield "AI service is busy right now. Please Wait 30 seconds and try again!!";
+            return;
+        };
+
+        if (error?.status === 503) {
+            yield "AI service is temporarily unavailable. Please try again shortly!!";
+            return;
+        };
     }
 }
-
 export default Router;

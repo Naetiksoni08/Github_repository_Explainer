@@ -6,7 +6,7 @@ import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Toaster position="top-right" />
+    <Toaster toastOptions={{duration:5000}} position="top-right" />
     <App />
   </StrictMode>,
 )

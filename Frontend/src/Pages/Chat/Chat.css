@@ -318,18 +318,11 @@
     background: var(--surface-hover);
 }
 
-.sessions-section-label {
-    font-size: 11px;
-    color: var(--text-muted);
-    padding: 6px 12px 2px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-}
 
 .sessions-divider {
-    height: 3px;
-    background: rgba(255, 255, 255, 0.08);
-    margin: 10px 12px;
+    width: calc(100% - 24px);
+    margin: 12px auto;
+    border-top: 1px solid rgba(255,255,255,0.15);
 }
 
 .light .sessions-divider {
@@ -346,9 +339,23 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    font-size: small;
-    margin-top: 20px;
+    gap: 2px;
+    min-height: 0;
+}
+
+.sessions-list {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* Edge */
+}
+
+.sessions-list::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
 }
 
 .recent-header {
@@ -383,7 +390,11 @@
 }
 
 .session-item {
-    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    height: 40px;
+    padding: 0 14px;
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.2s ease;
@@ -392,8 +403,8 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;       
-    box-sizing: border-box; 
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .session-item:hover {
@@ -407,7 +418,6 @@
 .session-item.active {
     background: var(--session-active-bg);
     border-left: 3px solid #4f46e5;
-    padding-bottom: 16px;
 }
 
 /* MAIN CHAT */
@@ -803,7 +813,7 @@
 
 
 .code-block-wrapper {
-    width: 100vh;
+    width: 100%;
     border-radius: 8px;
     overflow: hidden;
     margin: 14px 0;
@@ -1147,4 +1157,10 @@
 .export-pdf-btn:hover {
     background: var(--surface);
     color: var(--text);
+}
+
+
+.markdown-link{
+    color: inherit;
+    text-decoration: underline;
 }

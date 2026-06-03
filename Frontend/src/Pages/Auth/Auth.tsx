@@ -23,7 +23,7 @@ const Auth = () => {
         <div className='auth-wrapper'>
             <button className='back-to-home' onClick={() => navigate("/home")}>
                 <IoIosArrowRoundBack size={30} />
-                Back to Home
+                Back To Home
             </button>
             <div className={`auth-card ${mounted ? "visible" : ""}`}>
 
