@@ -1,6 +1,6 @@
 import SessionModel from "../../models/session.modal";
 import { Document } from "mongoose";
-import llm from "..";
+import { getLLM } from "..";
 
 async function getOrCreateSession(sessionId: string, repoUrl: string, userId: string,query:string): Promise<Document> {
     const session = await SessionModel.findOne({ sessionId });
@@ -12,7 +12,7 @@ async function getOrCreateSession(sessionId: string, repoUrl: string, userId: st
             title = repoUrl.split("/").filter(Boolean).pop() || "New Chat";
         } else {
             // No repo — generate a short conversational title from the query
-            title = (await llm.invoke(`Generate a short 4-5 word chat title for this message: "${query}". Return ONLY the title, no quotes, no punctuation.`)).content as string;
+             title = (await getLLM().invoke(`Generate a short 4-5 word chat title for this message: "${query}". Return ONLY the title, no quotes, no punctuation.`)).content as string;
         }
 
         const newSession = await SessionModel.create({
