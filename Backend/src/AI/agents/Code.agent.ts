@@ -1,6 +1,6 @@
 import { getMessages } from "./memory";
 import retriever from "../retriever/retriever";
-import llm from "..";
+import llmPromise from "../index";
 
 async function* CodeAnalyzerAgent(sessionId: string, cleanquery: string, repoUrl: string): AsyncGenerator<string> {
   const getHistory = await getMessages(sessionId);
@@ -63,8 +63,7 @@ Keep responses concise unless the user explicitly asks for detail.
   // Moroever if the user asks for anything which is not related to repository then dont just say i cant help you
   // with that but try to fulfill the reuqest of user such as the user could ask you to give him a code of anything 
   // in any langauge so fulfill user request.
-
-
+  const llm = await llmPromise;
   const stream = await llm.stream(prompt);
   for await (const chunk of stream) {
     yield chunk.content as string

@@ -1,18 +1,19 @@
 import SessionModel from "../../models/session.modal";
 import { Document } from "mongoose";
-import { getLLM } from "..";
+import llmPromise from "../index";
 
-async function getOrCreateSession(sessionId: string, repoUrl: string, userId: string,query:string): Promise<Document> {
+async function getOrCreateSession(sessionId: string, repoUrl: string, userId: string, query: string): Promise<Document> {
     const session = await SessionModel.findOne({ sessionId });
     if (!session) {
 
         let title: string;
+        const llm = await llmPromise;
         if (repoUrl) {
             // Extract repo name directly from URL e.g. https://github.com/user/my-repo → "my-repo"
             title = repoUrl.split("/").filter(Boolean).pop() || "New Chat";
         } else {
             // No repo — generate a short conversational title from the query
-             title = (await getLLM().invoke(`Generate a short 4-5 word chat title for this message: "${query}". Return ONLY the title, no quotes, no punctuation.`)).content as string;
+            title = (await llm.invoke(`Generate a short 4-5 word chat title for this message: "${query}". Return ONLY the title, no quotes, no punctuation.`)).content as string;
         }
 
         const newSession = await SessionModel.create({

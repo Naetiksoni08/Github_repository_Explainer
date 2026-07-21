@@ -322,7 +322,7 @@
 .sessions-divider {
     width: calc(100% - 24px);
     margin: 12px auto;
-    border-top: 1px solid rgba(255,255,255,0.15);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .light .sessions-divider {
@@ -448,7 +448,7 @@
 }
 
 .chat-main.empty-chat .input-area {
-    margin-top: -40px;
+    margin-top: 24px;
 }
 
 .messages-area {
@@ -458,65 +458,6 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
-}
-
-/* INPUT */
-.input-area {
-    padding: 20px 20%;
-    display: flex;
-    align-items: flex-end;
-    gap: 12px;
-}
-
-.input-area textarea {
-    flex: 1;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 15px;
-    padding: 12px 26px;
-    color: var(--text);
-    font-size: 15px;
-    outline: none;
-    font-family: 'Lora', Georgia, serif;
-    resize: none;
-    max-height: 200px;
-    overflow-y: auto;
-    line-height: 1.5;
-}
-
-.input-area textarea {
-    min-height: 52px;
-    max-height: 200px;
-    overflow-y: auto;
-    resize: none;
-}
-
-
-.input-area input::placeholder {
-    color: #666;
-}
-
-.input-area input:focus {
-    border-color: rgba(0, 0, 0, 0.4);
-}
-
-.input-area button {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 15px;
-    padding: 14px 20px;
-    color: var(--text);
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s ease;
-}
-
-.input-area button:hover {
-    background: var(--surface-hover);
-}
-
-.input-area button:focus {
-    border-color: rgba(0, 0, 0, 0.4);
 }
 
 
@@ -887,12 +828,15 @@
 } */
 
 .inline-code {
-    background: rgba(255, 255, 255, 0.1);
+    color: #f9cdad;
+    background: rgba(249, 115, 22, 0.1);
     padding: 2px 6px;
     border-radius: 4px;
-    font-family: monospace;
-    font-size: 13px;
-    color: #e8956d;
+    font-size: 0.9em;
+}
+
+.code-block-wrapper code {
+    color: inherit !important; /* SyntaxHighlighter ko apna coloring karne do */
 }
 
 .message-actions button {
@@ -1160,7 +1104,160 @@
 }
 
 
-.markdown-link{
+.markdown-link {
     color: inherit;
     text-decoration: underline;
+}
+
+
+.mic-active {
+    color: #ef4444;
+    animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+
+.listening-dots {
+    display: flex;
+    gap: 3px;
+}
+
+.listening-dots .dot {
+    font-size: 24px;
+    color: #ef4444;
+    animation: blink 1.4s infinite;
+}
+
+.listening-dots .dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.listening-dots .dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+.final-text {
+    color: #fff;
+}
+
+.interim-text {
+    color: #888;
+    font-style: italic;
+}
+
+.listening-dots .dot {
+    font-size: 24px;
+    color: #ef4444;
+    animation: blink 1.4s infinite;
+}
+
+.listening-dots .dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.listening-dots .dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes blink {
+
+    0%,
+    80%,
+    100% {
+        opacity: 0.2;
+    }
+
+    40% {
+        opacity: 1;
+    }
+}
+
+.input-area {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+
+    width: min(820px, calc(100% - 48px));
+    min-height: 68px;
+
+    margin: 20px auto;
+    padding: 12px 18px;
+
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+}
+
+.input-area textarea {
+    flex: 1;
+    resize: none;
+    min-height: 28px;
+    max-height: 180px;
+    padding: 10px 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.input-area textarea::placeholder {
+    color: var(--text-faint);
+}
+
+.voice-overlay-text {
+    position: absolute;
+    top: 16px;
+    left: 22px;
+    right: 90px;
+    padding: 6px 8px;
+    font-size: 15px;
+    line-height: 1.4;
+    pointer-events: none;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+.input-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.input-actions button {
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+
+    color: #c9c9c9;
+    cursor: pointer;
+
+    transition: all .2s ease;
+}
+.input-actions button:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.light .input-actions button:hover {
+    background: var(--surface-hover);
 }

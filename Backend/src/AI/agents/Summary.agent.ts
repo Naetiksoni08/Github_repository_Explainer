@@ -1,6 +1,7 @@
 import { getMessages } from "./memory";
 import retriever from "../retriever/retriever";
 import llm from "..";
+import llmPromise from "..";
 
 async function* SummarizerAgent(sessionId: string, cleanquery: string, repoUrl: string): AsyncGenerator<string> {
     const getHistory = await getMessages(sessionId);
@@ -45,7 +46,7 @@ async function* SummarizerAgent(sessionId: string, cleanquery: string, repoUrl: 
 
 Keep the response under 120 words unless the user requests more detail.
     `;
-
+    const llm = await llmPromise;
     const stream = await llm.stream(prompt);
     for await (const chunk of stream) {
         yield chunk.content as string

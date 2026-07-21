@@ -1,6 +1,7 @@
 import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import llm from "..";
+import llmPromise from "..";
+
 
 
 async function llmchunker(BadChunks: Document[]): Promise<Document[]> {
@@ -25,6 +26,7 @@ CODE:
 ${chunk.pageContent}`;
 
         try {
+            const llm = await llmPromise;
             const response = await llm.invoke(prompt);
             const raw = response.content as string;
             const clean = raw.replace(/```json|```/g, "").trim();

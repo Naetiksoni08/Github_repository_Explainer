@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import "./Chat.css"
-import { FiCheck, FiEdit, FiSend, FiSquare } from "react-icons/fi";
+import { FiCheck, FiEdit, FiSend, FiSquare, FiMic } from "react-icons/fi";
 import toast from 'react-hot-toast'
 import api from '../../utils/axios';
 import ReactMarkdown from 'react-markdown'
@@ -17,7 +17,6 @@ import { GoPencil } from "react-icons/go";
 import { RiDeleteBin5Line } from "react-icons/ri";
 import { FaRegStar } from "react-icons/fa6";
 import { jsPDF } from 'jspdf';
-
 
 const Chat = () => {
     const [messages, setMessages] = useState<any[]>([])
@@ -41,6 +40,10 @@ const Chat = () => {
     const [renameValue, setRenameValue] = useState("")
     const [githubRepos, setGithubRepos] = useState<any[]>([])
     const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [isListening, setIsListening] = useState(false)
+    const recognitionRef = useRef<any>(null)
+    const [interimText, setInterimText] = useState("")
+
 
 
     const navigate = useNavigate();
@@ -234,6 +237,67 @@ const Chat = () => {
         }
     }
 
+    const baseTextRef = useRef("")
+
+    useEffect(() => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        if (!SpeechRecognition) return
+
+        const recognition = new SpeechRecognition()
+        recognition.continuous = true       // stays open across pauses, user manually stops
+        recognition.interimResults = true  // only fires when a phrase is FINAL — no blinking
+        recognition.lang = "en-US"
+
+        recognition.onresult = (event: any) => {
+            let finalChunk = ""
+            let interimChunk = ""
+
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript
+                if (event.results[i].isFinal) {
+                    finalChunk += transcript + " "
+                } else {
+                    interimChunk += transcript
+                }
+            }
+
+            if (finalChunk) {
+                baseTextRef.current = baseTextRef.current
+                    ? `${baseTextRef.current} ${finalChunk.trim()}`
+                    : finalChunk.trim()
+                setInput(baseTextRef.current)
+            }
+            setInterimText(interimChunk)
+        }
+
+        recognition.onend = () => {
+            setIsListening(false)
+        }
+
+        recognition.onerror = () => {
+            setIsListening(false)
+            toast.error("Couldn't hear that, try again")
+        }
+
+        recognitionRef.current = recognition
+    }, [])
+
+    const handleMicClick = () => {
+        if (!recognitionRef.current) {
+            toast.error("Voice input not supported in this browser")
+            return
+        }
+        if (isListening) {
+            recognitionRef.current.stop()
+            setIsListening(false)
+            setInterimText("")
+        } else {
+            baseTextRef.current = input.trim()
+            recognitionRef.current.start()
+            setIsListening(true)
+        }
+    }
+
     const handleHome = () => {
         localStorage.removeItem("activeSession");
         setSessionId(crypto.randomUUID());
@@ -257,7 +321,9 @@ const Chat = () => {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         })
     }
-
+    const displayValue = isListening && interimText
+        ? `${input}${input ? " " : ""}${interimText}`
+        : input
 
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     useEffect(() => {
@@ -265,7 +331,7 @@ const Chat = () => {
             textareaRef.current.style.height = 'auto'
             textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
         }
-    }, [input])
+    }, [input, interimText])
 
     useEffect(() => {
         const saved = localStorage.getItem("theme");
@@ -704,16 +770,41 @@ const Chat = () => {
                                     e.preventDefault()
                                     handleSend()
                                 }
-
                             }}
                             placeholder={repoIngested ? "Ask anything about the repo..." : "Paste GitHub URL to get started..."}
-                            value={input}
+                            value={displayValue}
                             onChange={(e) => setInput(e.target.value)}
                             rows={1}
+                            style={{ opacity: isListening ? 0 : 1 }}
                         />
-                        <button onClick={loading ? handleAbort : handleSend}>
-                            {loading ? <FiSquare size={16} /> : <FiSend size={16} />}
-                        </button>
+                        {isListening && (
+                            <div className="voice-overlay-text">
+                                {!input && !interimText ? (
+                                    <span className="listening-dots">
+                                        <span className="dot">.</span>
+                                        <span className="dot">.</span>
+                                        <span className="dot">.</span>
+                                    </span>
+                                ) : (
+                                    <>
+                                        <span className="final-text">{input}</span>
+                                        {interimText && <span className="interim-text"> {interimText}</span>}
+                                    </>
+                                )}
+                            </div>
+                        )}
+                        <div className="input-actions">
+                            <button
+                                onClick={handleMicClick}
+                                className={isListening ? "mic-active" : ""}
+                                data-tooltip={isListening ? "Listening..." : "Voice input"}
+                            >
+                                <FiMic size={16} />
+                            </button>
+                            <button onClick={loading ? handleAbort : handleSend}>
+                                {loading ? <FiSquare size={16} /> : <FiSend size={16} />}
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

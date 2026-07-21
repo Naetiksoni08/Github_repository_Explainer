@@ -1,6 +1,7 @@
 import { getMessages } from "./memory";
 import retriever from "../retriever/retriever";
 import llm from "..";
+import llmPromise from "..";
 
 async function* DebuggerAgent(sessionId: string, cleanquery: string, repoUrl: string): AsyncGenerator<string> {
   const getHistory = await getMessages(sessionId);
@@ -49,6 +50,8 @@ Formatting:
 
 Keep responses under 150 words unless the user requests more detail.
 `;
+
+  const llm = await llmPromise;
 
   const stream = await llm.stream(prompt);
   for await (const chunk of stream) {

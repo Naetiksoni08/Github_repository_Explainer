@@ -1,12 +1,12 @@
-import llm from "..";
+import llmPromise from "..";
 import CodeAnalyzerAgent from "./Code.agent";
 import DebuggerAgent from "./Debugger.agent";
 import GeneralAgent from "./General.agent";
 import Rag_Agent from "./Rag.agent";
 import SummarizerAgent from "./Summary.agent";
 
-
 type Intent = "code_analyzer" | "summarizer" | "debugger" | "Rag_Agent" | "General"
+const REPO_DEPENDENT_INTENTS = ["code_analyzer", "summarizer", "debugger", "Rag_Agent"];
 
 async function* Router(sessionId: string, Query: string, repoUrl: string): AsyncGenerator<string> {
 
@@ -53,10 +53,9 @@ Repository:
 ${repoUrl || "None"}
 `;
 
-
-
     try {
         const q = Query.toLowerCase().trim();
+
         if (
             q.includes("error") ||
             q.includes("bug") ||
@@ -69,6 +68,13 @@ ${repoUrl || "None"}
             q.includes("crashes")
         ) {
             console.log("Fast Route → DebuggerAgent");
+
+            if (REPO_DEPENDENT_INTENTS.includes("debugger") && !repoUrl?.trim()) {
+                for await (const chunk of GeneralAgent(sessionId, Query)) {
+                    yield chunk;
+                }
+                return;
+            }
 
             return yield* DebuggerAgent(
                 sessionId,
@@ -93,6 +99,13 @@ ${repoUrl || "None"}
         ) {
             console.log("Fast Route → SummarizerAgent");
 
+            if (REPO_DEPENDENT_INTENTS.includes("summarizer") && !repoUrl?.trim()) {
+                for await (const chunk of GeneralAgent(sessionId, Query)) {
+                    yield chunk;
+                }
+                return;
+            }
+
             return yield* SummarizerAgent(
                 sessionId,
                 Query,
@@ -114,12 +127,21 @@ ${repoUrl || "None"}
         ) {
             console.log("Fast Route → CodeAnalyzerAgent");
 
+            if (REPO_DEPENDENT_INTENTS.includes("code_analyzer") && !repoUrl?.trim()) {
+                for await (const chunk of GeneralAgent(sessionId, Query)) {
+                    yield chunk;
+                }
+                return;
+            }
+
             return yield* CodeAnalyzerAgent(
                 sessionId,
                 Query,
                 repoUrl
             );
         }
+
+        const llm = await llmPromise;
         const result = await llm.invoke(RouterPrompt);
 
         let raw = result.content as string;
@@ -128,6 +150,12 @@ ${repoUrl || "None"}
 
         console.log("Intent:", intent)
 
+        if (REPO_DEPENDENT_INTENTS.includes(intent) && !repoUrl?.trim()) {
+            for await (const chunk of GeneralAgent(sessionId, Query)) {
+                yield chunk;
+            }
+            return;
+        }
 
         switch (intent) {
             case "code_analyzer":
@@ -170,12 +198,15 @@ ${repoUrl || "None"}
         if (error?.status === 429) {
             yield "AI service is busy right now. Please Wait 30 seconds and try again!!";
             return;
-        };
+        }
 
         if (error?.status === 503) {
             yield "AI service is temporarily unavailable. Please try again shortly!!";
             return;
-        };
+        }
+
+        yield "Something went wrong while processing your request. Please try again.";
     }
 }
+
 export default Router;
