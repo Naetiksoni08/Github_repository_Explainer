@@ -17,6 +17,9 @@ import { GoPencil } from "react-icons/go";
 import { RiDeleteBin5Line } from "react-icons/ri";
 import { FaRegStar } from "react-icons/fa6";
 import { jsPDF } from 'jspdf';
+import { HiEllipsisVertical } from "react-icons/hi2";
+import { IoClose } from 'react-icons/io5';
+import useClickOutside from '../../utils/useClickOutside';
 
 const Chat = () => {
     const [messages, setMessages] = useState<any[]>([])
@@ -43,6 +46,12 @@ const Chat = () => {
     const [isListening, setIsListening] = useState(false)
     const recognitionRef = useRef<any>(null)
     const [interimText, setInterimText] = useState("")
+    const [activeMenuSessionId, setActiveMenuSessionId] = useState<string | null>(null);
+    const [renameTargetId, setRenameTargetId] = useState<string | null>(null)
+    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+    const headerMenuRef = useRef<HTMLDivElement>(null)
+    const logoutMenuRef = useRef<HTMLDivElement>(null)
+    const sessionMenuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
 
 
 
@@ -238,33 +247,44 @@ const Chat = () => {
     }
 
     const baseTextRef = useRef("")
+    const processedFinalCountRef = useRef(0)
 
     useEffect(() => {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
         if (!SpeechRecognition) return
 
         const recognition = new SpeechRecognition()
-        recognition.continuous = true       // stays open across pauses, user manually stops
-        recognition.interimResults = true  // only fires when a phrase is FINAL — no blinking
+        recognition.continuous = true
+        recognition.interimResults = true
         recognition.lang = "en-US"
 
         recognition.onresult = (event: any) => {
-            let finalChunk = ""
+            let newFinalChunk = ""
             let interimChunk = ""
 
-            for (let i = event.resultIndex; i < event.results.length; i++) {
+            for (let i = 0; i < event.results.length; i++) {
                 const transcript = event.results[i][0].transcript
                 if (event.results[i].isFinal) {
-                    finalChunk += transcript + " "
+                    // Sirf wahi finals process karo jo pehle count nahi hue
+                    if (i >= processedFinalCountRef.current) {
+                        newFinalChunk += transcript + " "
+                    }
                 } else {
                     interimChunk += transcript
                 }
             }
 
-            if (finalChunk) {
+            // Update how many finals we've now consumed
+            let finalCount = 0
+            for (let i = 0; i < event.results.length; i++) {
+                if (event.results[i].isFinal) finalCount++
+            }
+            processedFinalCountRef.current = finalCount
+
+            if (newFinalChunk) {
                 baseTextRef.current = baseTextRef.current
-                    ? `${baseTextRef.current} ${finalChunk.trim()}`
-                    : finalChunk.trim()
+                    ? `${baseTextRef.current} ${newFinalChunk.trim()}`
+                    : newFinalChunk.trim()
                 setInput(baseTextRef.current)
             }
             setInterimText(interimChunk)
@@ -292,7 +312,8 @@ const Chat = () => {
             setIsListening(false)
             setInterimText("")
         } else {
-            baseTextRef.current = input.trim()
+            baseTextRef.current = input
+            processedFinalCountRef.current = 0 // reset counter for fresh session
             recognitionRef.current.start()
             setIsListening(true)
         }
@@ -328,8 +349,9 @@ const Chat = () => {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     useEffect(() => {
         if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto'
-            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+            textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
         }
     }, [input, interimText])
 
@@ -341,49 +363,60 @@ const Chat = () => {
     const handleAbort = () => {
         abortControllerRef.current?.abort()
     }
-
     const handleRename = async () => {
-        await api.patch(`/api/sessions/${sessionId}`, { title: renameValue }, {
+        if (!renameTargetId) return
+        await api.patch(`/api/sessions/${renameTargetId}`, { title: renameValue }, {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
         })
         await fetchSession();
         setIsRenaming(false);
-        setShowSessionMenu(false);
+        setRenameTargetId(null);
     }
-    const handleStarSession = async () => {
-        const isCurrentlyStarred = sessions.find(s => s.sessionId === sessionId)?.starred;
-        if (!isCurrentlyStarred && starredSessions.length >= 3) {
+
+
+    const handleStarSession = async (targetId: string) => {
+        const target = sessions.find(s => s.sessionId === targetId);
+        if (!target?.starred && starredSessions.length >= 3) {
             toast.error("Max 3 starred sessions allowed");
             return;
         }
-        await api.patch(`/api/sessions/${sessionId}/star`, {}, {
+        await api.patch(`/api/sessions/${targetId}/star`, {}, {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
         })
         setShowSessionMenu(false);
+        setActiveMenuSessionId(null);
         await fetchSession();
     }
 
-
-    const handleDelete = () => {
+    const handleDelete = (targetId: string) => {
         setShowSessionMenu(false)
+        setActiveMenuSessionId(null)
+        setDeleteTargetId(targetId)
         setShowDeleteModal(true)
     }
 
+
     const confirmDelete = async () => {
-        const CurrentIndex = sessions.findIndex(s => s.sessionId === sessionId);
+        if (!deleteTargetId) return
+        const CurrentIndex = sessions.findIndex(s => s.sessionId === deleteTargetId);
         const nextSession = sessions[CurrentIndex + 1] || sessions[CurrentIndex - 1] || null;
-        await api.delete(`/api/sessions/${sessionId}`, {
+        await api.delete(`/api/sessions/${deleteTargetId}`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
         })
         setShowDeleteModal(false)
         toast.success("Chat deleted")
         await fetchSession();
-        if (nextSession) {
-            handleSessionClick(nextSession)
-        } else {
-            handleNewChat();
+        // sirf tabhi navigate/reset karo jab active session hi delete hui ho
+        if (deleteTargetId === sessionId) {
+            if (nextSession) {
+                handleSessionClick(nextSession)
+            } else {
+                handleNewChat();
+            }
         }
+        setDeleteTargetId(null)
     }
+
     const ExportPdfHandler = async () => {
         if (messages.length === 0) return
         const sessionTitle = sessions.find(s => s.sessionId === sessionId)?.title || "Chat Export";
@@ -467,6 +500,67 @@ const Chat = () => {
         toast.success("PDF downloaded!")
     }
 
+    useEffect(() => {
+        if (!activeMenuSessionId) return
+
+        const handleClick = (e: MouseEvent) => {
+            const currentRef = sessionMenuRefs.current[activeMenuSessionId]
+            if (currentRef && !currentRef.contains(e.target as Node)) {
+                setActiveMenuSessionId(null)
+            }
+        }
+
+        document.addEventListener("mousedown", handleClick)
+        return () => document.removeEventListener("mousedown", handleClick)
+    }, [activeMenuSessionId])
+
+    const renderSessionItem = (session: any) => (
+        <div
+            key={session.sessionId}
+            ref={(el) => { sessionMenuRefs.current[session.sessionId] = el }}
+            className={`session-item ${session.sessionId === sessionId ? "active" : ""}`}
+            onClick={() => !loadingSession && handleSessionClick(session)}
+        >
+            <span>{session.title || "Untitled Session"}</span>
+
+            <button
+                className="session-item-menu-btn"
+                onClick={(e) => {
+                    e.stopPropagation()
+                    setActiveMenuSessionId(activeMenuSessionId === session.sessionId ? null : session.sessionId)
+                }}
+            >
+                <HiEllipsisVertical size={16} />
+            </button>
+
+            {activeMenuSessionId === session.sessionId && (
+                <div className="session-menu" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => {
+                        setRenameValue(session.title || "");
+                        setRenameTargetId(session.sessionId);
+                        setIsRenaming(true);
+                        setActiveMenuSessionId(null);
+                    }}><GoPencil size={14} />Rename</button>
+
+                    <button className="delete-option" onClick={() => handleDelete(session.sessionId)}>
+                        <RiDeleteBin5Line size={14} />Delete
+                    </button>
+
+                    <button
+                        className="starred-option"
+                        onClick={() => handleStarSession(session.sessionId)}
+                        disabled={!session.starred && starredSessions.length >= 3}
+                    >
+                        <FaRegStar size={14} />
+                        {session.starred ? "Unstar" : "Star"}
+                    </button>
+                </div>
+            )}
+        </div>
+    )
+
+    useClickOutside(headerMenuRef, () => setShowSessionMenu(false), showSessionMenu)
+    useClickOutside(logoutMenuRef, () => setShowLogoutModal(false), showLogoutModal)
     return (
 
         <div className={`chat-wrapper ${isDark ? "dark" : "light"}`}>
@@ -511,8 +605,7 @@ const Chat = () => {
                     </div>
                 </div>
             )}
-            <div className={`sidebar ${isSidebarCollapsed ? "hidden" : ""}`}
-                onClick={() => setShowLogoutModal(false)}>
+            <div className={`sidebar ${isSidebarCollapsed ? "hidden" : ""}`}>
                 <div className="sidebar-header">
                     <div className="nav-logo">
                         <h2 onClick={handleHome} className="text-logo">CodeLens AI</h2>
@@ -548,34 +641,19 @@ const Chat = () => {
                     <div className="sessions-list">
                         {starredSessions.length > 0 && (
                             <>
-                                {starredSessions.map((session: any) => (
-                                    <div
-                                        key={session.sessionId}
-                                        className={`session-item ${session.sessionId === sessionId ? "active" : ""}`}
-                                        onClick={() => !loadingSession && handleSessionClick(session)}
-                                    >
-                                        <span>{session.title || "Untitled Session"}</span>
-                                    </div>
-                                ))}
+                                {starredSessions.map(renderSessionItem)}
                                 <div className="sessions-divider" />
                             </>
                         )}
-                        {normalSessions.map((session: any) => (
-                            <div
-                                key={session.sessionId}
-                                className={`session-item ${session.sessionId === sessionId ? "active" : ""}`}
-                                onClick={() => !loadingSession && handleSessionClick(session)}
-                            >
-                                <span>{session.title || "Untitled Session"}</span>
-                            </div>
-                        ))}
+                        {normalSessions.map(renderSessionItem)}
                     </div>
                 )}
-                <div className='sidebar-footer'>
 
-
-                    <div className='user-profile' onClick={(e) => { e.stopPropagation(); setShowLogoutModal(!showLogoutModal) }}>
-
+                <div className='user-profile-wrapper' ref={logoutMenuRef}>
+                    <div className='user-profile' onClick={(e) => {
+                        e.stopPropagation();
+                        setShowLogoutModal(!showLogoutModal)
+                    }}>
                         <div className="avatar">
                             <img
                                 src={user?.picture || "/avatar.svg"}
@@ -587,6 +665,7 @@ const Chat = () => {
                         </div>
                         <span className='username'>{user?.name || "User"}</span>
                     </div>
+
                     {showLogoutModal && (
                         <div className="logout-modal">
                             <button onClick={handleLogout} className="logout-btn">Logout</button>
@@ -610,37 +689,52 @@ const Chat = () => {
                     )}
 
                     {showSessionMenu && (
-                        <div className='session-menu'>
-                            {isRenaming ? (
-                                <div className="rename-input-row">
-                                    <input
-                                        autoFocus
-                                        value={renameValue}
-                                        onChange={(e) => setRenameValue(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key == "Enter") handleRename()
-                                            if (e.key == "Escape") setIsRenaming(false)
-                                        }}
-                                    />
-                                    <button onClick={handleRename}>Save</button>
-                                </div>
-                            ) : (
-                                <>
-                                    <button onClick={() => {
-                                        setRenameValue(sessions.find(s => s.sessionId === sessionId)?.title || "");
-                                        setIsRenaming(true);
-                                    }}><GoPencil size={14} />Rename</button>
-                                    <button className="delete-option" onClick={handleDelete}><RiDeleteBin5Line size={14} />Delete</button>
-                                    <button
-                                        className="starred-option"
-                                        onClick={handleStarSession}
-                                        disabled={!currentSessionStarred && starredSessions.length >= 3}
-                                    >
-                                        <FaRegStar size={14} />
-                                        {currentSessionStarred ? "Unstar" : "Star"}
+                        <div className='session-menu' ref={headerMenuRef}>
+                            <button onClick={() => {
+                                setRenameValue(sessions.find(s => s.sessionId === sessionId)?.title || "");
+                                setRenameTargetId(sessionId);
+                                setIsRenaming(true);
+                                setShowSessionMenu(false);
+                            }}><GoPencil size={14} />Rename</button>
+
+                            <button className="delete-option" onClick={() => handleDelete(sessionId)}>
+                                <RiDeleteBin5Line size={14} />Delete
+                            </button>
+
+                            <button
+                                className="starred-option"
+                                onClick={() => handleStarSession(sessionId)}
+                                disabled={!currentSessionStarred && starredSessions.length >= 3}
+                            >
+                                <FaRegStar size={14} />
+                                {currentSessionStarred ? "Unstar" : "Star"}
+                            </button>
+                        </div>
+                    )}
+                    {isRenaming && (
+                        <div className="rename-overlay" onClick={() => setIsRenaming(false)}>
+                            <div className="rename-modal" onClick={(e) => e.stopPropagation()}>
+                                <div className="rename-modal-header">
+                                    <span>Edit name</span>
+                                    <button className="rename-modal-close" onClick={() => setIsRenaming(false)}>
+                                        <IoClose size={18} />
                                     </button>
-                                </>
-                            )}
+                                </div>
+                                <input
+                                    autoFocus
+                                    className="rename-modal-input"
+                                    value={renameValue}
+                                    onChange={(e) => setRenameValue(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") handleRename()
+                                        if (e.key === "Escape") setIsRenaming(false)
+                                    }}
+                                />
+                                <div className="rename-modal-actions">
+                                    <button className="rename-modal-cancel" onClick={() => setIsRenaming(false)}>Cancel</button>
+                                    <button className="rename-modal-confirm" onClick={handleRename}>Confirm</button>
+                                </div>
+                            </div>
                         </div>
                     )}
                     {messages.length > 0 && (
@@ -673,7 +767,7 @@ const Chat = () => {
                         ) : (
                             <div className="empty-state">
                                 <h2>Hey {user?.name?.split(" ")[0]}, 👋</h2>
-                                <h2>What repo would you like to analyze?</h2>
+                                <h2>What Repository would you like to analyze?</h2>
                             </div>
                         )
                     ) : (
@@ -715,22 +809,26 @@ const Chat = () => {
                                         <button data-tooltip="Copy" onClick={() => {
                                             navigator.clipboard.writeText(msg.content)
                                             setCopiedIndex(index)
-                                            setTimeout(() =>
-                                                setCopiedIndex(null), 2000)
+                                            setTimeout(() => setCopiedIndex(null), 2000)
                                         }}>
-                                            {copiedIndex === index ? <FiCheck size={13} /> : <FiCopy size={13} />}
+                                            {copiedIndex === index ? <FiCheck size={14} /> : <FiCopy size={14} />}
+                                            <span>Copy</span>
                                         </button>
+
                                         <button data-tooltip="Edit" onClick={() => {
                                             setInput(msg.content)
                                             setTimeout(() => textareaRef.current?.focus(), 0)
                                         }}>
-                                            <FiEdit size={13} />
+                                            <FiEdit size={14} />
+                                            <span>Edit</span>
                                         </button>
+
                                         <button data-tooltip="Retry" onClick={() => {
                                             setInput(msg.content)
                                             setMessages(prev => prev.slice(0, index))
                                         }}>
-                                            <FiRefreshCw size={13} />
+                                            <FiRefreshCw size={14} />
+                                            <span>Retry</span>
                                         </button>
                                     </div>
                                 )}
@@ -771,7 +869,7 @@ const Chat = () => {
                                     handleSend()
                                 }
                             }}
-                            placeholder={repoIngested ? "Ask anything about the repo..." : "Paste GitHub URL to get started..."}
+                            placeholder={repoIngested ? "Analyze code, explain logic, or ask questions..." : "Paste a GitHub URL to analyze repository..."}
                             value={displayValue}
                             onChange={(e) => setInput(e.target.value)}
                             rows={1}
