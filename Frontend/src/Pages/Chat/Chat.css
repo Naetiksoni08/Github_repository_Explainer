@@ -1237,7 +1237,6 @@ textarea {
     /* Input area full width with less padding */
     .input-area {
         padding: 12px 4%;
-
     }
 
     /* Empty chat centering adjustments */
@@ -1390,17 +1389,20 @@ textarea {
 .input-area {
     position: relative;
     display: flex;
-    align-items: flex-end;
-
+    flex-direction: column;
     width: min(820px, calc(100% - 48px));
     min-height: 68px;
-
     margin: 20px auto;
     padding: 12px 18px;
-
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 24px;
+}
+
+.input-row {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
 }
 
 .input-area textarea {
@@ -1467,4 +1469,105 @@ textarea {
 
 .light .input-actions button:hover {
     background: var(--surface-hover);
+}
+
+
+.pasted-files-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 0 0 10px 0;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.pasted-file-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.pasted-file-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.pasted-file-remove {
+    background: transparent;
+    border: none;
+    color: #9a9a9a;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 2px;
+    border-radius: 4px;
+}
+
+.pasted-file-remove:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.preview-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.preview-modal {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 16px;
+    width: 900px;
+    max-width: 92vw;
+    max-height: 75vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.preview-modal-header button {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.preview-modal-content {
+    overflow-x: auto;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12.5px;
+    color: #ccc;
+    white-space: pre;
+    word-break: normal;
+    margin: 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.preview-modal-content::-webkit-scrollbar {
+    display: none;
 }

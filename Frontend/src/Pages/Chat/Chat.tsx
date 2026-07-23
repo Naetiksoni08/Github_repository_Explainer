@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import "./Chat.css"
-import { FiCheck, FiEdit, FiSend, FiSquare, FiMic } from "react-icons/fi";
+import { FiCheck, FiEdit, FiSend, FiSquare, FiMic, FiFileText } from "react-icons/fi";
 import toast from 'react-hot-toast'
 import api from '../../utils/axios';
 import ReactMarkdown from 'react-markdown'
@@ -52,8 +52,17 @@ const Chat = () => {
     const headerMenuRef = useRef<HTMLDivElement>(null)
     const logoutMenuRef = useRef<HTMLDivElement>(null)
     const sessionMenuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+    const [pastedFiles, setPastedFiles] = useState<PastedFile[]>([])
+    const [previewFile, setPreviewFile] = useState<PastedFile | null>(null)
 
+    interface PastedFile {
+        id: string
+        content: string
+        lineCount: number
+    }
 
+    const PASTE_LINE_THRESHOLD = 40
+    const PASTE_CHAR_THRESHOLD = 2000
 
     const navigate = useNavigate();
     const abortControllerRef = useRef<AbortController | null>(null)
@@ -128,11 +137,20 @@ const Chat = () => {
     }, [messages])
 
     const handleSend = async () => {
-        if (!input.trim()) return
-        const currentInput = input
+        if (!input.trim() && pastedFiles.length === 0) return
+
+        let currentInput = input
+        if (pastedFiles.length > 0) {
+            const attachmentsText = pastedFiles
+                .map(f => `\n\n[Pasted content - ${f.lineCount} lines]\n\`\`\`\n${f.content}\n\`\`\``)
+                .join('')
+            currentInput = currentInput + attachmentsText
+        }
+
         const userMessage = { role: "user", content: currentInput }
         setMessages(prev => [...prev, userMessage])
         setInput("")
+        setPastedFiles([])
         setLoading(true)
         localStorage.setItem("activeSession", sessionId);
 
@@ -559,10 +577,28 @@ const Chat = () => {
         </div>
     )
 
+    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const pastedText = e.clipboardData.getData('text')
+        if (!pastedText) return
+
+        const lineCount = pastedText.split('\n').length
+
+        if (lineCount > PASTE_LINE_THRESHOLD || pastedText.length > PASTE_CHAR_THRESHOLD) {
+            e.preventDefault()
+            const newFile: PastedFile = {
+                id: crypto.randomUUID(),
+                content: pastedText,
+                lineCount
+            }
+            setPastedFiles(prev => [...prev, newFile])
+            setTimeout(() => {
+                textareaRef.current?.focus()
+            }, 0)
+        }
+    }
     useClickOutside(headerMenuRef, () => setShowSessionMenu(false), showSessionMenu)
     useClickOutside(logoutMenuRef, () => setShowLogoutModal(false), showLogoutModal)
     return (
-
         <div className={`chat-wrapper ${isDark ? "dark" : "light"}`}>
             {showSearch && (
                 <div className="search-overlay" onClick={() => { setShowSearch(false); setSearchQuery("") }}>
@@ -861,52 +897,88 @@ const Chat = () => {
                 </div>
                 {!loadingSession && (
                     <div className="input-area">
-                        <textarea
-                            ref={textareaRef}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault()
-                                    handleSend()
-                                }
-                            }}
-                            placeholder={repoIngested ? "Analyze code, explain logic, or ask questions..." : "Paste a GitHub URL to analyze repository..."}
-                            value={displayValue}
-                            onChange={(e) => setInput(e.target.value)}
-                            rows={1}
-                            style={{ opacity: isListening ? 0 : 1 }}
-                        />
-                        {isListening && (
-                            <div className="voice-overlay-text">
-                                {!input && !interimText ? (
-                                    <span className="listening-dots">
-                                        <span className="dot">.</span>
-                                        <span className="dot">.</span>
-                                        <span className="dot">.</span>
-                                    </span>
-                                ) : (
-                                    <>
-                                        <span className="final-text">{input}</span>
-                                        {interimText && <span className="interim-text"> {interimText}</span>}
-                                    </>
-                                )}
+                        {pastedFiles.length > 0 && (
+                            <div className="pasted-files-row">
+                                {pastedFiles.map(file => (
+                                    <div key={file.id} className="pasted-file-chip" onClick={() => setPreviewFile(file)}>
+                                        <FiFileText size={14} />
+                                        <span>Pasted text · {file.lineCount} lines</span>
+                                        <button
+                                            className="pasted-file-remove"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                setPastedFiles(prev => prev.filter(f => f.id !== file.id))
+                                            }}
+                                        >
+                                            <IoClose size={12} />
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
                         )}
-                        <div className="input-actions">
-                            <button
-                                onClick={handleMicClick}
-                                className={isListening ? "mic-active" : ""}
-                                data-tooltip={isListening ? "Listening..." : "Voice input"}
-                            >
-                                <FiMic size={16} />
-                            </button>
-                            <button onClick={loading ? handleAbort : handleSend}>
-                                {loading ? <FiSquare size={16} /> : <FiSend size={16} />}
-                            </button>
+
+                        <div className="input-row">
+                            <textarea
+                                ref={textareaRef}
+                                onPaste={handlePaste}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                        e.preventDefault()
+                                        handleSend()
+                                    }
+                                }}
+                                placeholder={repoIngested ? "Analyze code, explain logic, or ask questions..." : "Paste a GitHub URL to analyze repository..."}
+                                value={displayValue}
+                                onChange={(e) => setInput(e.target.value)}
+                                rows={1}
+                                style={{ opacity: isListening ? 0 : 1 }}
+                            />
+                            {isListening && (
+                                <div className="voice-overlay-text">
+                                    {!input && !interimText ? (
+                                        <span className="listening-dots">
+                                            <span className="dot">.</span>
+                                            <span className="dot">.</span>
+                                            <span className="dot">.</span>
+                                        </span>
+                                    ) : (
+                                        <>
+                                            <span className="final-text">{input}</span>
+                                            {interimText && <span className="interim-text"> {interimText}</span>}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                            <div className="input-actions">
+                                <button
+                                    onClick={handleMicClick}
+                                    className={isListening ? "mic-active" : ""}
+                                    data-tooltip={isListening ? "Listening..." : "Voice input"}
+                                >
+                                    <FiMic size={20} />
+                                </button>
+                                <button onClick={loading ? handleAbort : handleSend}>
+                                    {loading ? <FiSquare size={16} /> : <FiSend size={18} />}
+                                </button>
+                            </div>
                         </div>
+
+                        {previewFile && (
+                            <div className="preview-overlay" onClick={() => setPreviewFile(null)}>
+                                <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
+                                    <div className="preview-modal-header">
+                                        <span>Pasted text · {previewFile.lineCount} lines</span>
+                                        <button onClick={() => setPreviewFile(null)}><IoClose size={18} /></button>
+                                    </div>
+                                    <pre className="preview-modal-content">{previewFile.content}</pre>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
+
             </div>
-        </div >
+        </div>
     )
 }
 
