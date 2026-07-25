@@ -4,6 +4,7 @@ import { Request } from "express";
 import { Response } from "express";
 import ingest from "../AI/ingestion";
 import { getOrCreateSession } from "../AI/agents/memory";
+import { invalidateCacheForRepo } from "../utils/cache";
 
 
 
@@ -14,6 +15,7 @@ const IngestController = async (req: Request, res: Response) => {
         const repoUrl = rawUrl.trim()
         const user = req.user as any
         await ingest(repoUrl)
+        invalidateCacheForRepo(repoUrl)
         await getOrCreateSession(sessionId, repoUrl, user.id, "");
         success(res, { repoUrl }, "Repository ingested successfully")
     } catch (err) {

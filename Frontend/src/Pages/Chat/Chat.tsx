@@ -61,8 +61,9 @@ const Chat = () => {
         lineCount: number
     }
 
-    const PASTE_LINE_THRESHOLD = 40
-    const PASTE_CHAR_THRESHOLD = 2000
+    const PASTE_LINE_THRESHOLD = 100
+    const PASTE_CHAR_THRESHOLD = 6000
+    const MAX_TOTAL_PASTE_CHARS = 12000 // combined cap across all pasted files in one message
 
     const navigate = useNavigate();
     const abortControllerRef = useRef<AbortController | null>(null)
@@ -137,6 +138,7 @@ const Chat = () => {
     }, [messages])
 
     const handleSend = async () => {
+        if (loading) return
         if (!input.trim() && pastedFiles.length === 0) return
 
         let currentInput = input
@@ -153,8 +155,6 @@ const Chat = () => {
         setPastedFiles([])
         setLoading(true)
         localStorage.setItem("activeSession", sessionId);
-
-        await new Promise(res => setTimeout(res, 2000))
 
         try {
             const token = localStorage.getItem("token");
@@ -193,32 +193,71 @@ const Chat = () => {
                 const decoder = new TextDecoder()
 
                 let streamStarted = false
+                let buffer = "" // Incomplete lines ke liye
+
                 try {
                     while (true) {
                         const { done, value } = await reader.read()
                         if (done) break
 
-                        const text = decoder.decode(value)
-                        const lines = text.split("\n")
+                        // { stream: true } — multi-byte characters across chunks handle karega
+                        const text = decoder.decode(value, { stream: true })
+                        buffer += text
+                        const lines = buffer.split("\n")
+                        buffer = lines.pop() || "" // Last incomplete line buffer mein rakho
 
                         for (const line of lines) {
                             if (line.startsWith("data: ")) {
-                                const raw = line.slice(6);
-                                if (raw === "[DONE]") break
-                                if (raw === "[ERROR]") throw new Error("Stream error from server")
-                                const chunk = JSON.parse(raw);
+                                const raw = line.slice(6).trim()
+                                if (!raw) continue // Empty chunk skip
+
+                                if (raw === "[DONE]") {
+                                    buffer = ""
+                                    break
+                                }
+
+                                if (raw === "[ERROR]") {
+                                    console.error("[SSE] Server reported stream error")
+                                    setMessages(prev => {
+                                        const updated = [...prev]
+                                        const last = updated[updated.length - 1]
+                                        if (last?.role === "assistant") {
+                                            updated[updated.length - 1] = { ...last, errored: true }
+                                        }
+                                        return updated
+                                    })
+                                    continue
+                                }
+
+                                // ========== FIX: Safe JSON parse ==========
+                                let chunk: any
+                                try {
+                                    chunk = JSON.parse(raw)
+                                } catch (parseErr) {
+                                    console.warn("[SSE] Invalid chunk skipped:", raw.slice(0, 50))
+                                    continue // Corrupt chunk skip, stream continue
+                                }
+
+                                // Ensure string (agar object aaya toh .content lo, warna String())
+                                const contentChunk = typeof chunk === "string"
+                                    ? chunk
+                                    : (chunk?.content ? String(chunk.content) : "")
+
                                 if (!streamStarted) {
                                     setLoading(false)
                                     streamStarted = true
                                 }
-                                setMessages(prev => {
-                                    const updated = [...prev]
-                                    updated[updated.length - 1] = {
-                                        ...updated[updated.length - 1],
-                                        content: updated[updated.length - 1].content + chunk
-                                    }
-                                    return updated
-                                })
+
+                                if (contentChunk) {
+                                    setMessages(prev => {
+                                        const updated = [...prev]
+                                        updated[updated.length - 1] = {
+                                            ...updated[updated.length - 1],
+                                            content: updated[updated.length - 1].content + contentChunk
+                                        }
+                                        return updated
+                                    })
+                                }
                             }
                         }
                     }
@@ -580,11 +619,21 @@ const Chat = () => {
     const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
         const pastedText = e.clipboardData.getData('text')
         if (!pastedText) return
-
+    
         const lineCount = pastedText.split('\n').length
-
+    
         if (lineCount > PASTE_LINE_THRESHOLD || pastedText.length > PASTE_CHAR_THRESHOLD) {
             e.preventDefault()
+    
+            const currentTotal = pastedFiles.reduce((sum, f) => sum + f.content.length, 0)
+    
+            if (currentTotal + pastedText.length > MAX_TOTAL_PASTE_CHARS) {
+                toast.error(
+                    `Total pasted content limit reached (${MAX_TOTAL_PASTE_CHARS.toLocaleString()} chars). Remove a pasted file before adding more.`
+                )
+                return
+            }
+    
             const newFile: PastedFile = {
                 id: crypto.randomUUID(),
                 content: pastedText,
@@ -596,6 +645,7 @@ const Chat = () => {
             }, 0)
         }
     }
+
     useClickOutside(headerMenuRef, () => setShowSessionMenu(false), showSessionMenu)
     useClickOutside(logoutMenuRef, () => setShowLogoutModal(false), showLogoutModal)
     return (
@@ -840,6 +890,25 @@ const Chat = () => {
                                     <span className="interrupted-text">AI's response was interrupted</span>
                                 )}
 
+                                {msg.errored && (
+                                    <div className="error-retry-row">
+                                        <span className="interrupted-text">Something went wrong generating this response.</span>
+                                        <button
+                                            className="retry-error-btn"
+                                            onClick={() => {
+                                                const prevUserMsg = messages[index - 1]
+                                                if (prevUserMsg?.role === "user") {
+                                                    setInput(prevUserMsg.content)
+                                                    setMessages(prev => prev.slice(0, index - 1))
+                                                    setTimeout(() => textareaRef.current?.focus(), 0)
+                                                }
+                                            }}
+                                        >
+                                            <FiRefreshCw size={13} /> Retry
+                                        </button>
+                                    </div>
+                                )}
+
                                 {msg.role === "user" && (
                                     <div className="message-actions">
                                         <button data-tooltip="Copy" onClick={() => {
@@ -957,7 +1026,13 @@ const Chat = () => {
                                 >
                                     <FiMic size={20} />
                                 </button>
-                                <button onClick={loading ? handleAbort : handleSend}>
+                                <button
+                                    onClick={loading ? handleAbort : handleSend}
+                                    style={{
+                                        opacity: loading ? 0.7 : 1,
+                                        cursor: loading ? 'default' : 'pointer'
+                                    }}
+                                >
                                     {loading ? <FiSquare size={16} /> : <FiSend size={18} />}
                                 </button>
                             </div>

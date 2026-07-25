@@ -1571,3 +1571,29 @@ textarea {
 .preview-modal-content::-webkit-scrollbar {
     display: none;
 }
+
+.error-retry-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.retry-error-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.retry-error-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+}

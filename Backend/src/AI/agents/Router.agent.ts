@@ -4,6 +4,7 @@ import DebuggerAgent from "./Debugger.agent";
 import GeneralAgent from "./General.agent";
 import Rag_Agent from "./Rag.agent";
 import SummarizerAgent from "./Summary.agent";
+import { getCommonResponse } from "../../utils/commonResponses";
 
 type Intent = "code_analyzer" | "summarizer" | "debugger" | "Rag_Agent" | "General"
 const REPO_DEPENDENT_INTENTS = ["code_analyzer", "summarizer", "debugger", "Rag_Agent"];
@@ -11,6 +12,14 @@ const REPO_DEPENDENT_INTENTS = ["code_analyzer", "summarizer", "debugger", "Rag_
 async function* Router(sessionId: string, Query: string, repoUrl: string): AsyncGenerator<string> {
 
     console.log("Router called with query:", Query);
+
+    // STEP 0: static, repo-independent common responses — no LLM call at all
+    const commonResponse = getCommonResponse(Query);
+    if (commonResponse) {
+        console.log("Common response matched — skipping LLM entirely");
+        yield commonResponse;
+        return;
+    }
 
     const RouterPrompt = `
 Classify the query into one category:
@@ -76,11 +85,7 @@ ${repoUrl || "None"}
                 return;
             }
 
-            return yield* DebuggerAgent(
-                sessionId,
-                Query,
-                repoUrl
-            );
+            return yield* DebuggerAgent(sessionId, Query, repoUrl);
         }
 
         if (
@@ -106,11 +111,7 @@ ${repoUrl || "None"}
                 return;
             }
 
-            return yield* SummarizerAgent(
-                sessionId,
-                Query,
-                repoUrl
-            );
+            return yield* SummarizerAgent(sessionId, Query, repoUrl);
         }
 
         if (
@@ -134,11 +135,7 @@ ${repoUrl || "None"}
                 return;
             }
 
-            return yield* CodeAnalyzerAgent(
-                sessionId,
-                Query,
-                repoUrl
-            );
+            return yield* CodeAnalyzerAgent(sessionId, Query, repoUrl);
         }
 
         const llm = await llmPromise;
@@ -146,9 +143,23 @@ ${repoUrl || "None"}
 
         let raw = result.content as string;
         raw = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-        const { intent }: { intent: Intent } = JSON.parse(raw);
 
-        console.log("Intent:", intent)
+        let intent: Intent = "General";
+
+        try {
+            const jsonMatch = raw.match(/\{[^}]+\}/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                const validIntents: Intent[] = ["code_analyzer", "summarizer", "debugger", "Rag_Agent", "General"];
+                if (parsed.intent && validIntents.includes(parsed.intent)) {
+                    intent = parsed.intent;
+                }
+            }
+        } catch (parseErr) {
+            console.error("[Router] Failed to parse intent JSON:", raw);
+        }
+
+        console.log("Intent:", intent);
 
         if (REPO_DEPENDENT_INTENTS.includes(intent) && !repoUrl?.trim()) {
             for await (const chunk of GeneralAgent(sessionId, Query)) {
@@ -159,41 +170,27 @@ ${repoUrl || "None"}
 
         switch (intent) {
             case "code_analyzer":
-                return yield* CodeAnalyzerAgent(
-                    sessionId,
-                    Query,
-                    repoUrl
-                );
+                return yield* CodeAnalyzerAgent(sessionId, Query, repoUrl);
 
             case "summarizer":
-                return yield* SummarizerAgent(
-                    sessionId,
-                    Query,
-                    repoUrl
-                );
+                return yield* SummarizerAgent(sessionId, Query, repoUrl);
 
             case "debugger":
-                return yield* DebuggerAgent(
-                    sessionId,
-                    Query,
-                    repoUrl
-                );
+                return yield* DebuggerAgent(sessionId, Query, repoUrl);
 
             case "Rag_Agent":
-                return yield* Rag_Agent(
-                    sessionId,
-                    Query,
-                    repoUrl
-                );
+                return yield* Rag_Agent(sessionId, Query, repoUrl);
 
             default:
-                return yield* GeneralAgent(
-                    sessionId,
-                    Query
-                );
+                return yield* GeneralAgent(sessionId, Query);
         }
     } catch (error: any) {
         console.error("Router Error:", error);
+
+        if (error?.name === "LLMServiceUnavailableError") {
+            yield error.message;
+            return;
+        }
 
         if (error?.status === 429) {
             yield "AI service is busy right now. Please Wait 30 seconds and try again!!";
