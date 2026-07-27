@@ -54,6 +54,7 @@ const Chat = () => {
     const sessionMenuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
     const [pastedFiles, setPastedFiles] = useState<PastedFile[]>([])
     const [previewFile, setPreviewFile] = useState<PastedFile | null>(null)
+    const [ingestProgress, setIngestProgress] = useState<{ stage: string; percent: number } | null>(null)
 
     interface PastedFile {
         id: string
@@ -137,6 +138,68 @@ const Chat = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages])
 
+
+    const handleIngestWithProgress = async (trimmedUrl: string): Promise<boolean> => {
+        setIngestProgress({ stage: "starting", percent: 0 })
+        const token = localStorage.getItem("token")
+
+        try {
+            const response = await fetch("http://localhost:5001/api/ingest", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ repoUrl: trimmedUrl, sessionId })
+            })
+
+            if (!response.body) {
+                throw new Error("No response body")
+            }
+
+            const reader = response.body.getReader()
+            const decoder = new TextDecoder()
+
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                const text = decoder.decode(value)
+                const lines = text.split("\n")
+
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        const raw = line.slice(6)
+                        if (!raw.trim()) continue
+
+                        const parsed = JSON.parse(raw)
+
+                        if (parsed.error) {
+                            toast.error(parsed.message || "Ingest failed")
+                            setIngestProgress(null)
+                            return false
+                        }
+
+                        if (parsed.done) {
+                            setIngestProgress(null)
+                            return true
+                        }
+
+                        setIngestProgress({ stage: parsed.stage, percent: parsed.percent })
+                    }
+                }
+            }
+
+            setIngestProgress(null)
+            return true
+        } catch (err) {
+            console.error("Ingest stream error:", err)
+            toast.error("Something went wrong while analyzing repository")
+            setIngestProgress(null)
+            return false
+        }
+    }
+
     const handleSend = async () => {
         if (loading) return
         if (!input.trim() && pastedFiles.length === 0) return
@@ -159,22 +222,31 @@ const Chat = () => {
         try {
             const token = localStorage.getItem("token");
 
-            const isGithubUrl = currentInput.trim().startsWith("https://github.com") || currentInput.trim().includes("github.com/")
+            const currentInputTrimmed = currentInput.trim()
+            const isGithubUrl = currentInputTrimmed.startsWith("https://github.com") || currentInputTrimmed.includes("github.com/")
 
+            const OTHER_REPO_HOSTS = ["gitlab.com", "bitbucket.org", "sourceforge.net", "codeberg.org"]
+            const isOtherRepoHost = OTHER_REPO_HOSTS.some((host) => currentInputTrimmed.includes(host))
+
+            if (!repoIngested && isOtherRepoHost && !isGithubUrl) {
+                toast.error("Currently only GitHub repositories are supported. Please paste a GitHub repo URL.")
+                setLoading(false)
+                return
+            }
             if (!repoIngested && isGithubUrl) {
                 // INGEST FLOW
                 const trimmedUrl = currentInput.trim()
                 setRepoUrl(trimmedUrl)
-                await api.post(
-                    '/api/ingest',
-                    { repoUrl: trimmedUrl, sessionId },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                )
-                setRepoIngested(true)
-                const aiMessage = { role: "assistant", content: "Repository analyzed!.", timestamp: new Date().toISOString() }
-                setMessages(prev => [...prev, aiMessage])
-                toast.success("Repository ready!")
-                await fetchSession();
+
+                const success = await handleIngestWithProgress(trimmedUrl)
+
+                if (success) {
+                    setRepoIngested(true)
+                    const aiMessage = { role: "assistant", content: "Repository analyzed!.", timestamp: new Date().toISOString() }
+                    setMessages(prev => [...prev, aiMessage])
+                    toast.success("Repository ready!")
+                    await fetchSession();
+                }
             } else {
                 // CHAT FLOW — SSE streaming
                 setMessages(prev => [...prev, { role: "assistant", content: "", timestamp: new Date().toISOString() }])
@@ -619,21 +691,21 @@ const Chat = () => {
     const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
         const pastedText = e.clipboardData.getData('text')
         if (!pastedText) return
-    
+
         const lineCount = pastedText.split('\n').length
-    
+
         if (lineCount > PASTE_LINE_THRESHOLD || pastedText.length > PASTE_CHAR_THRESHOLD) {
             e.preventDefault()
-    
+
             const currentTotal = pastedFiles.reduce((sum, f) => sum + f.content.length, 0)
-    
+
             if (currentTotal + pastedText.length > MAX_TOTAL_PASTE_CHARS) {
                 toast.error(
                     `Total pasted content limit reached (${MAX_TOTAL_PASTE_CHARS.toLocaleString()} chars). Remove a pasted file before adding more.`
                 )
                 return
             }
-    
+
             const newFile: PastedFile = {
                 id: crypto.randomUUID(),
                 content: pastedText,
@@ -833,131 +905,147 @@ const Chat = () => {
                 <div className="messages-area">
                     {loadingSession ? (
                         <Loader />
+                    ) : ingestProgress ? (
+                        <div className="ingest-progress-wrapper">
+                            <div className="ingest-progress-label">
+                                <span>
+                                    {ingestProgress.stage === "starting" && "Starting..."}
+                                    {ingestProgress.stage === "loading" && "Loading repository files..."}
+                                    {ingestProgress.stage === "chunking" && "Chunking code..."}
+                                    {ingestProgress.stage === "cleaning" && "Cleaning chunks..."}
+                                    {ingestProgress.stage === "storing" && "Storing in vector database..."}
+                                </span>
+                                <span>{ingestProgress.percent}%</span>
+                            </div>
+                            <div className="ingest-progress-track">
+                                <div className="ingest-progress-fill" style={{ width: `${ingestProgress.percent}%` }} />
+                            </div>
+                        </div>
                     ) : messages.length === 0 ? (
-                        githubRepos.length > 0 ? (
-                            <div className="repo-picker">
-                                <h2>Hey {user?.name?.split(" ")[0]}, which repo to analyze?</h2>
-                                <div className="repo-grid">
-                                    {githubRepos.map((repo: any) => (
-                                        <div className="repo-card" key={repo.id} onClick={() => setInput(repo.html_url)}>
-                                            <span className="repo-name">{repo.name}</span>
-                                            <span className="repo-desc">{repo.description || "No description"}</span>
-                                            <div className="repo-meta">
-                                                {repo.language && <span className="repo-lang">{repo.language}</span>}
-                                                <span className="repo-stars">⭐ {repo.stargazers_count}</span>
+                            githubRepos.length > 0 ? (
+                                <div className="repo-picker">
+                                    <h2>Hey {user?.name?.split(" ")[0]}, which repo to analyze?</h2>
+                                    <div className="repo-grid">
+                                        {githubRepos.map((repo: any) => (
+                                            <div className="repo-card" key={repo.id} onClick={() => setInput(repo.html_url)}>
+                                                <span className="repo-name">{repo.name}</span>
+                                                <span className="repo-desc">{repo.description || "No description"}</span>
+                                                <div className="repo-meta">
+                                                    {repo.language && <span className="repo-lang">{repo.language}</span>}
+                                                    <span className="repo-stars">⭐ {repo.stargazers_count}</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="empty-state">
+                                    <h2>Hey {user?.name?.split(" ")[0]}, 👋</h2>
+                                    <h2>What Repository would you like to analyze?</h2>
+                                </div>
+                            )
                         ) : (
-                            <div className="empty-state">
-                                <h2>Hey {user?.name?.split(" ")[0]}, 👋</h2>
-                                <h2>What Repository would you like to analyze?</h2>
-                            </div>
-                        )
-                    ) : (
-                        messages.map((msg, index) => (
-                            <div key={index} className={`message ${msg.role}`}>
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                        code({ className, children }) {
-                                            return (
-                                                <CodeBlock className={className}>
-                                                    {children}
-                                                </CodeBlock>
-                                            )
-                                        },
-                                        a({ href, children }) {
-                                            return (
-                                                <a
-                                                    href={href}
-                                                    target='_blank'
-                                                    rel="noopener noreferrer"
-                                                    className='markdown-link'
-                                                >
-                                                    {children}
-                                                </a>
-                                            )
-                                        }
-                                    }}
-                                >
-                                    {msg.content}
-                                </ReactMarkdown>
+                            messages.map((msg, index) => (
+                                <div key={index} className={`message ${msg.role}`}>
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            code({ className, children }) {
+                                                return (
+                                                    <CodeBlock className={className}>
+                                                        {children}
+                                                    </CodeBlock>
+                                                )
+                                            },
+                                            a({ href, children }) {
+                                                return (
+                                                    <a
+                                                        href={href}
+                                                        target='_blank'
+                                                        rel="noopener noreferrer"
+                                                        className='markdown-link'
+                                                    >
+                                                        {children}
+                                                    </a>
+                                                )
+                                            }
+                                        }}
+                                    >
+                                        {msg.content}
+                                    </ReactMarkdown>
 
-                                {msg.interrupted && (
-                                    <span className="interrupted-text">AI's response was interrupted</span>
-                                )}
+                                    {msg.interrupted && (
+                                        <span className="interrupted-text">AI's response was interrupted</span>
+                                    )}
 
-                                {msg.errored && (
-                                    <div className="error-retry-row">
-                                        <span className="interrupted-text">Something went wrong generating this response.</span>
-                                        <button
-                                            className="retry-error-btn"
-                                            onClick={() => {
-                                                const prevUserMsg = messages[index - 1]
-                                                if (prevUserMsg?.role === "user") {
-                                                    setInput(prevUserMsg.content)
-                                                    setMessages(prev => prev.slice(0, index - 1))
-                                                    setTimeout(() => textareaRef.current?.focus(), 0)
-                                                }
-                                            }}
-                                        >
-                                            <FiRefreshCw size={13} /> Retry
-                                        </button>
-                                    </div>
-                                )}
+                                    {msg.errored && (
+                                        <div className="error-retry-row">
+                                            <span className="interrupted-text">Something went wrong generating this response.</span>
+                                            <button
+                                                className="retry-error-btn"
+                                                onClick={() => {
+                                                    const prevUserMsg = messages[index - 1]
+                                                    if (prevUserMsg?.role === "user") {
+                                                        setInput(prevUserMsg.content)
+                                                        setMessages(prev => prev.slice(0, index - 1))
+                                                        setTimeout(() => textareaRef.current?.focus(), 0)
+                                                    }
+                                                }}
+                                            >
+                                                <FiRefreshCw size={13} /> Retry
+                                            </button>
+                                        </div>
+                                    )}
 
-                                {msg.role === "user" && (
-                                    <div className="message-actions">
-                                        <button data-tooltip="Copy" onClick={() => {
-                                            navigator.clipboard.writeText(msg.content)
-                                            setCopiedIndex(index)
-                                            setTimeout(() => setCopiedIndex(null), 2000)
-                                        }}>
-                                            {copiedIndex === index ? <FiCheck size={14} /> : <FiCopy size={14} />}
-                                            <span>Copy</span>
-                                        </button>
+                                    {msg.role === "user" && (
+                                        <div className="message-actions">
+                                            <button data-tooltip="Copy" onClick={() => {
+                                                navigator.clipboard.writeText(msg.content)
+                                                setCopiedIndex(index)
+                                                setTimeout(() => setCopiedIndex(null), 2000)
+                                            }}>
+                                                {copiedIndex === index ? <FiCheck size={14} /> : <FiCopy size={14} />}
+                                                <span>Copy</span>
+                                            </button>
 
-                                        <button data-tooltip="Edit" onClick={() => {
-                                            setInput(msg.content)
-                                            setTimeout(() => textareaRef.current?.focus(), 0)
-                                        }}>
-                                            <FiEdit size={14} />
-                                            <span>Edit</span>
-                                        </button>
+                                            <button data-tooltip="Edit" onClick={() => {
+                                                setInput(msg.content)
+                                                setTimeout(() => textareaRef.current?.focus(), 0)
+                                            }}>
+                                                <FiEdit size={14} />
+                                                <span>Edit</span>
+                                            </button>
 
-                                        <button data-tooltip="Retry" onClick={() => {
-                                            setInput(msg.content)
-                                            setMessages(prev => prev.slice(0, index))
-                                        }}>
-                                            <FiRefreshCw size={14} />
-                                            <span>Retry</span>
-                                        </button>
-                                    </div>
-                                )}
+                                            <button data-tooltip="Retry" onClick={() => {
+                                                setInput(msg.content)
+                                                setMessages(prev => prev.slice(0, index))
+                                            }}>
+                                                <FiRefreshCw size={14} />
+                                                <span>Retry</span>
+                                            </button>
+                                        </div>
+                                    )}
 
-                                {msg.role === "assistant" && msg.content && (
-                                    <div className="message-footer">
-                                        {msg.timestamp && (
-                                            <span className="message-time">
-                                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        )}
-                                        <button className="footer-copy-btn" data-tooltip="Copy" onClick={() => {
-                                            navigator.clipboard.writeText(msg.content)
-                                            setCopiedIndex(index)
-                                            setTimeout(() => setCopiedIndex(null), 2000)
-                                        }}>
-                                            {copiedIndex === index ? <FiCheck size={15} /> : <FiCopy size={15} />}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        ))
-                    )}
-                    {loading && (
+                                    {msg.role === "assistant" && msg.content && (
+                                        <div className="message-footer">
+                                            {msg.timestamp && (
+                                                <span className="message-time">
+                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            )}
+                                            <button className="footer-copy-btn" data-tooltip="Copy" onClick={() => {
+                                                navigator.clipboard.writeText(msg.content)
+                                                setCopiedIndex(index)
+                                                setTimeout(() => setCopiedIndex(null), 2000)
+                                            }}>
+                                                {copiedIndex === index ? <FiCheck size={15} /> : <FiCopy size={15} />}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    {loading && !ingestProgress &&(
                         <div className="message assistant">
                             <ThinkingLoader />
                         </div>

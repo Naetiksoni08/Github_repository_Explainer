@@ -14,9 +14,24 @@ function getPineconeIndex() {
     return pineconeIndex;
 }
 
+async function deleteExistingVectorsForRepo(repoUrl: string): Promise<void> {
+    try {
+        await getPineconeIndex().deleteMany({ repoUrl });
+        console.log(`Cleared old vectors for: ${repoUrl}`);
+    } catch (err) {
+        // If there's nothing to delete yet (first-time ingest), Pinecone may
+        // no-op or throw depending on SDK version — don't block ingestion on this.
+        console.warn(`No existing vectors to clear (or delete failed) for: ${repoUrl}`, err);
+    }
+}
+
 async function storeDocuments(docs: Document[], repoUrl: string) {
     const validDocs = docs.filter(doc => doc.pageContent.trim().length > 0);
     if (validDocs.length === 0) throw new Error("No valid docs");
+
+    // remove any vectors from a previous ingest of this same repo, so
+    // re-ingesting doesn't leave stale/outdated chunks mixed into retrieval
+    await deleteExistingVectorsForRepo(repoUrl);
 
     const texts = validDocs.map(doc => doc.pageContent);
     const embeddings = await documentEmbeddings.embedDocuments(texts);
@@ -34,13 +49,13 @@ async function storeDocuments(docs: Document[], repoUrl: string) {
         };
     });
 
-    await getPineconeIndex().upsert({ records: vectors }); // ✅ fixed
+    await getPineconeIndex().upsert({ records: vectors });
     console.log(`Stored ${vectors.length} vectors in Pinecone for: ${repoUrl}`);
 }
 
 async function getVectorStore(): Promise<PineconeStore> {
     return await PineconeStore.fromExistingIndex(documentEmbeddings, {
-        pineconeIndex: getPineconeIndex() // ✅ fixed
+        pineconeIndex: getPineconeIndex()
     });
 }
 
