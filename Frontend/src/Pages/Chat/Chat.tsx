@@ -55,6 +55,8 @@ const Chat = () => {
     const [pastedFiles, setPastedFiles] = useState<PastedFile[]>([])
     const [previewFile, setPreviewFile] = useState<PastedFile | null>(null)
     const [ingestProgress, setIngestProgress] = useState<{ stage: string; percent: number } | null>(null)
+    const [editingIndex, setEditingIndex] = useState<number | null>(null)
+    const [editValue, setEditValue] = useState("")
 
     interface PastedFile {
         id: string
@@ -200,11 +202,12 @@ const Chat = () => {
         }
     }
 
-    const handleSend = async () => {
+    const handleSend = async (overrideText?: string) => {
         if (loading) return
-        if (!input.trim() && pastedFiles.length === 0) return
+        const textToSend = overrideText ?? input
+        if (!textToSend.trim() && pastedFiles.length === 0) return
 
-        let currentInput = input
+        let currentInput = textToSend
         if (pastedFiles.length > 0) {
             const attachmentsText = pastedFiles
                 .map(f => `\n\n[Pasted content - ${f.lineCount} lines]\n\`\`\`\n${f.content}\n\`\`\``)
@@ -489,8 +492,17 @@ const Chat = () => {
         setIsDark(saved !== "light")
     }, [])
 
-    const handleAbort = () => {
+    const handleAbort = async () => {
         abortControllerRef.current?.abort()
+        const lastMsg = messages[messages.length - 1]
+        if (lastMsg?.role === "assistant") {
+            try {
+                await api.patch(`/api/sessions/${sessionId}/mark-interrupted`,
+                    { timestamp: lastMsg.timestamp, content: lastMsg.content },
+                    { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+                )
+            } catch { /* ignore */ }
+        }
     }
     const handleRename = async () => {
         if (!renameTargetId) return
@@ -688,6 +700,21 @@ const Chat = () => {
         </div>
     )
 
+    const handleRetry = async (index: number) => {
+        const target = messages[index]
+        try {
+            await api.patch(`/api/sessions/${sessionId}/truncate`,
+                { fromTimestamp: target.timestamp },
+                { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+            )
+            setMessages(prev => prev.slice(0, index))
+            setInput(target.content)
+            setTimeout(() => textareaRef.current?.focus(), 0)
+        } catch {
+            toast.error("Couldn't retry, please try again")
+        }
+    }
+
     const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
         const pastedText = e.clipboardData.getData('text')
         if (!pastedText) return
@@ -843,7 +870,6 @@ const Chat = () => {
                             {sessions.find(s => s.sessionId === sessionId)?.title || "New Chat"}
                             <MdKeyboardArrowDown size={20} />
                         </span>
-
                     )}
 
                     {showSessionMenu && (
@@ -922,31 +948,59 @@ const Chat = () => {
                             </div>
                         </div>
                     ) : messages.length === 0 ? (
-                            githubRepos.length > 0 ? (
-                                <div className="repo-picker">
-                                    <h2>Hey {user?.name?.split(" ")[0]}, which repo to analyze?</h2>
-                                    <div className="repo-grid">
-                                        {githubRepos.map((repo: any) => (
-                                            <div className="repo-card" key={repo.id} onClick={() => setInput(repo.html_url)}>
-                                                <span className="repo-name">{repo.name}</span>
-                                                <span className="repo-desc">{repo.description || "No description"}</span>
-                                                <div className="repo-meta">
-                                                    {repo.language && <span className="repo-lang">{repo.language}</span>}
-                                                    <span className="repo-stars">⭐ {repo.stargazers_count}</span>
-                                                </div>
+                        githubRepos.length > 0 ? (
+                            <div className="repo-picker">
+                                <h2>Hey {user?.name?.split(" ")[0]}, which repo to analyze?</h2>
+                                <div className="repo-grid">
+                                    {githubRepos.map((repo: any) => (
+                                        <div className="repo-card" key={repo.id} onClick={() => setInput(repo.html_url)}>
+                                            <span className="repo-name">{repo.name}</span>
+                                            <span className="repo-desc">{repo.description || "No description"}</span>
+                                            <div className="repo-meta">
+                                                {repo.language && <span className="repo-lang">{repo.language}</span>}
+                                                <span className="repo-stars">⭐ {repo.stargazers_count}</span>
                                             </div>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ) : (
-                                <div className="empty-state">
-                                    <h2>Hey {user?.name?.split(" ")[0]}, 👋</h2>
-                                    <h2>What Repository would you like to analyze?</h2>
-                                </div>
-                            )
+                            </div>
                         ) : (
-                            messages.map((msg, index) => (
-                                <div key={index} className={`message ${msg.role}`}>
+                            <div className="empty-state">
+                                <h2>Hey {user?.name?.split(" ")[0]}, 👋</h2>
+                                <h2>What Repository would you like to analyze?</h2>
+                            </div>
+                        )
+                    ) : (
+                        messages.map((msg, index) => (
+                            <div key={index} className={`message ${msg.role}`}>
+                                {editingIndex === index ? (
+                                    <div className="inline-edit-box">
+                                        <textarea
+                                            className="inline-edit-textarea"
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            autoFocus
+                                            rows={Math.min(10, editValue.split("\n").length + 1)}
+                                        />
+                                        <div className="inline-edit-actions">
+                                            <button className="inline-edit-cancel" onClick={() => setEditingIndex(null)}>
+                                                Cancel
+                                            </button>
+                                            <button
+                                                className="inline-edit-save"
+                                                disabled={!editValue.trim()}
+                                                onClick={async () => {
+                                                    const trimmed = editValue.trim()
+                                                    await handleRetry(index)
+                                                    setEditingIndex(null)
+                                                    await handleSend(trimmed)
+                                                }}
+                                            >
+                                                Save & Submit
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}
                                         components={{
@@ -973,79 +1027,105 @@ const Chat = () => {
                                     >
                                         {msg.content}
                                     </ReactMarkdown>
+                                )}
 
-                                    {msg.interrupted && (
-                                        <span className="interrupted-text">AI's response was interrupted</span>
-                                    )}
-
-                                    {msg.errored && (
-                                        <div className="error-retry-row">
-                                            <span className="interrupted-text">Something went wrong generating this response.</span>
-                                            <button
-                                                className="retry-error-btn"
-                                                onClick={() => {
-                                                    const prevUserMsg = messages[index - 1]
-                                                    if (prevUserMsg?.role === "user") {
-                                                        setInput(prevUserMsg.content)
-                                                        setMessages(prev => prev.slice(0, index - 1))
-                                                        setTimeout(() => textareaRef.current?.focus(), 0)
-                                                    }
-                                                }}
-                                            >
-                                                <FiRefreshCw size={13} /> Retry
-                                            </button>
+                                {editingIndex !== index && msg.interrupted && (
+                                    <div className="interrupted-card">
+                                        <div className="interrupted-card-text">
+                                            <span className="interrupted-dot" />
+                                            <span>Response was interrupted</span>
                                         </div>
-                                    )}
+                                        {!msg.dismissed && (
+                                            <div className="interrupted-card-actions">
+                                                <button
+                                                    className="interrupted-try-again"
+                                                    onClick={async () => {
+                                                        const lastUserMsg = messages[index - 1]
+                                                        if (lastUserMsg?.role !== "user") return
+                                                        await handleRetry(index - 1)
+                                                        await handleSend(lastUserMsg.content)
+                                                    }}
+                                                >
+                                                    <FiRefreshCw size={12} />
+                                                    Try again
+                                                </button>
+                                                <button
+                                                    className="interrupted-no-thanks"
+                                                    onClick={async () => {
+                                                        await api.patch(`/api/sessions/${sessionId}/dismiss-interrupt`,
+                                                            { timestamp: msg.timestamp },
+                                                            { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+                                                        )
+                                                        setMessages(prev => {
+                                                            const updated = [...prev]
+                                                            updated[index] = { ...updated[index], dismissed: true }
+                                                            return updated
+                                                        })
+                                                    }}
+                                                >
+                                                    No thanks
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
-                                    {msg.role === "user" && (
-                                        <div className="message-actions">
-                                            <button data-tooltip="Copy" onClick={() => {
-                                                navigator.clipboard.writeText(msg.content)
-                                                setCopiedIndex(index)
-                                                setTimeout(() => setCopiedIndex(null), 2000)
-                                            }}>
-                                                {copiedIndex === index ? <FiCheck size={14} /> : <FiCopy size={14} />}
-                                                <span>Copy</span>
-                                            </button>
+                                {editingIndex !== index && msg.errored && (
+                                    <div className="error-retry-row">
+                                        <span className="interrupted-text">Something went wrong generating this response.</span>
+                                        <button className="retry-error-btn" onClick={() => handleRetry(index - 1)}>
+                                            <FiRefreshCw size={14} />
+                                            <span>Retry</span>
+                                        </button>
+                                    </div>
+                                )}
 
-                                            <button data-tooltip="Edit" onClick={() => {
-                                                setInput(msg.content)
-                                                setTimeout(() => textareaRef.current?.focus(), 0)
-                                            }}>
-                                                <FiEdit size={14} />
-                                                <span>Edit</span>
-                                            </button>
+                                {editingIndex !== index && msg.role === "user" && (
+                                    <div className="message-actions">
+                                        <button data-tooltip="Copy" onClick={() => {
+                                            navigator.clipboard.writeText(msg.content)
+                                            setCopiedIndex(index)
+                                            setTimeout(() => setCopiedIndex(null), 2000)
+                                        }}>
+                                            {copiedIndex === index ? <FiCheck size={14} /> : <FiCopy size={14} />}
+                                            <span>Copy</span>
+                                        </button>
 
-                                            <button data-tooltip="Retry" onClick={() => {
-                                                setInput(msg.content)
-                                                setMessages(prev => prev.slice(0, index))
-                                            }}>
-                                                <FiRefreshCw size={14} />
-                                                <span>Retry</span>
-                                            </button>
-                                        </div>
-                                    )}
+                                        <button data-tooltip="Edit" onClick={() => {
+                                            setEditingIndex(index)
+                                            setEditValue(msg.content)
+                                        }}>
+                                            <FiEdit size={14} />
+                                            <span>Edit</span>
+                                        </button>
 
-                                    {msg.role === "assistant" && msg.content && (
-                                        <div className="message-footer">
-                                            {msg.timestamp && (
-                                                <span className="message-time">
-                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            )}
-                                            <button className="footer-copy-btn" data-tooltip="Copy" onClick={() => {
-                                                navigator.clipboard.writeText(msg.content)
-                                                setCopiedIndex(index)
-                                                setTimeout(() => setCopiedIndex(null), 2000)
-                                            }}>
-                                                {copiedIndex === index ? <FiCheck size={15} /> : <FiCopy size={15} />}
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            ))
-                        )}
-                    {loading && !ingestProgress &&(
+                                        <button data-tooltip="Retry" onClick={() => handleRetry(index)}>
+                                            <FiRefreshCw size={14} />
+                                            <span>Retry</span>
+                                        </button>
+                                    </div>
+                                )}
+
+                                {editingIndex !== index && msg.role === "assistant" && msg.content && (
+                                    <div className="message-footer">
+                                        {msg.timestamp && (
+                                            <span className="message-time">
+                                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        )}
+                                        <button className="footer-copy-btn" data-tooltip="Copy" onClick={() => {
+                                            navigator.clipboard.writeText(msg.content)
+                                            setCopiedIndex(index)
+                                            setTimeout(() => setCopiedIndex(null), 2000)
+                                        }}>
+                                            {copiedIndex === index ? <FiCheck size={15} /> : <FiCopy size={15} />}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    )}
+                    {loading && !ingestProgress && (
                         <div className="message assistant">
                             <ThinkingLoader />
                         </div>
@@ -1115,7 +1195,7 @@ const Chat = () => {
                                     <FiMic size={20} />
                                 </button>
                                 <button
-                                    onClick={loading ? handleAbort : handleSend}
+                                    onClick={loading ? handleAbort : () => handleSend()}
                                     style={{
                                         opacity: loading ? 0.7 : 1,
                                         cursor: loading ? 'default' : 'pointer'
@@ -1144,6 +1224,5 @@ const Chat = () => {
         </div>
     )
 }
-
 
 export default Chat

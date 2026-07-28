@@ -33,6 +33,9 @@ const sessionSchema = new mongoose.Schema({
         timestamp: {
             type: String,
         },
+        dismissed: { type: Boolean, default: false },
+        interrupted: { type: Boolean, default: false },
+        errored: { type: Boolean, default: false },
     }]
 }, {
     timestamps: true

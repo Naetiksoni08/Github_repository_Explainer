@@ -33,17 +33,22 @@ async function getOrCreateSession(sessionId: string, repoUrl: string, userId: st
     return session as Document;
 }
 
-async function AddMessage(sessionId: string, role: string, content: string): Promise<void> {
+async function AddMessage(
+    sessionId: string,
+    role: string,
+    content: string,
+    extra: { interrupted?: boolean; errored?: boolean } = {}
+): Promise<void> {
     const session = await SessionModel.findOne({ sessionId });
     if (!session) return;
 
     session.messages.push({
         role,
         content,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        ...extra
     });
 
-    // FIX: splice use karo, slice nahi — DocumentArray intact rahega
     if (session.messages.length > 100) {
         session.messages.splice(0, session.messages.length - 100);
     }
@@ -59,7 +64,10 @@ async function getMessages(sessionId: string): Promise<any[]> {
     let messages = session.messages.map((m: any) => ({
         role: m.role,
         content: m.content,
-        timestamp: m.timestamp
+        timestamp: m.timestamp,
+        interrupted: m.interrupted,
+        errored: m.errored,
+        dismissed: m.dismissed
     }));
 
     // 1. Last 15 messages

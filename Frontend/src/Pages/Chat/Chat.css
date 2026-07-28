@@ -1639,3 +1639,138 @@ textarea {
 .light .ingest-progress-track {
     background: rgba(0, 0, 0, 0.08);
 }
+
+.inline-edit-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.inline-edit-textarea {
+    width: 100%;
+    resize: none;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    line-height: 1.5;
+    outline: none;
+}
+
+.inline-edit-textarea:focus {
+    border-color: #4f46e5;
+}
+
+.inline-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.inline-edit-cancel,
+.inline-edit-save {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    border: none;
+}
+
+.inline-edit-cancel {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.inline-edit-save {
+    background: #4f46e5;
+    color: white;
+    font-weight: 500;
+}
+
+.inline-edit-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.interrupted-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    max-width: 420px;
+}
+
+.light .interrupted-card {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+.interrupted-card-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: normal;
+}
+
+.interrupted-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #f59e0b;
+    flex-shrink: 0;
+}
+
+.interrupted-card-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.interrupted-try-again,
+.interrupted-no-thanks {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12.5px;
+    padding: 5px 12px;
+    border-radius: 7px;
+    cursor: pointer;
+    border: none;
+    font-weight: 500;
+    transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.interrupted-try-again {
+    background: #4f46e5;
+    color: white;
+}
+
+.interrupted-try-again:hover {
+    background: #433ac9;
+}
+
+.interrupted-no-thanks {
+    background: transparent;
+    color: var(--text-muted);
+}
+
+.interrupted-no-thanks:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+}
+
+.light .interrupted-no-thanks:hover {
+    background: rgba(0, 0, 0, 0.05);
+}

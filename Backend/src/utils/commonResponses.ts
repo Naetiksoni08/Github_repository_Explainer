@@ -20,9 +20,16 @@ const COMMON_RESPONSES: { keywords: string[]; response: string }[] = [
     { keywords: ["what model are you", "which llm", "what llm do you use"], response: "I run on free-tier models via OpenRouter, with automatic fallback between a few options for reliability." },
     { keywords: ["can i trust you", "are you accurate", "are you reliable"], response: "I do my best to stay accurate based on the repository context provided, but always double-check critical code changes yourself." },
 ];
-
 function normalizeForMatch(query: string): string {
     return query.trim().toLowerCase().replace(/[?.!]+$/g, "");
+}
+
+function matchesKeyword(normalized: string, keyword: string): boolean {
+    // Multi-word keywords ("who are you") ko phrase match chahiye,
+    // single-word keywords ("hi") ko word-boundary match chahiye
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`\\b${escaped}\\b`);
+    return pattern.test(normalized);
 }
 
 function getCommonResponse(query: string): string | null {
@@ -31,11 +38,10 @@ function getCommonResponse(query: string): string | null {
     if (normalized.length > 60) return null;
 
     for (const entry of COMMON_RESPONSES) {
-        if (entry.keywords.some((kw) => normalized === kw || normalized.includes(kw))) {
+        if (entry.keywords.some((kw) => normalized === kw || matchesKeyword(normalized, kw))) {
             return entry.response;
         }
     }
     return null;
 }
-
 export { getCommonResponse };
