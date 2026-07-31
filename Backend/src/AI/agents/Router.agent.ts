@@ -14,7 +14,7 @@ async function* Router(sessionId: string, Query: string, repoUrl: string): Async
     console.log("Router called with query:", Query);
 
     // STEP 0: static, repo-independent common responses — no LLM call at all
-    const commonResponse = getCommonResponse(Query);
+    const commonResponse = getCommonResponse(Query, !!repoUrl?.trim());
     if (commonResponse) {
         console.log("Common response matched — skipping LLM entirely");
         yield commonResponse;

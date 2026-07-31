@@ -570,11 +570,12 @@ textarea::-webkit-scrollbar {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative; 
 }
 
 .chat-main.empty-chat {
     justify-content: center;
-    padding-bottom: 10vh; 
+    padding-bottom: 10vh;
 }
 
 .chat-main.empty-chat .chat-header {
@@ -587,8 +588,8 @@ textarea::-webkit-scrollbar {
 .chat-main.empty-chat .messages-area {
     flex: 0 0 auto;
     overflow: hidden;
-    max-height: 140px;    
-    padding: 0 15%;   
+    max-height: 140px;
+    padding: 0 15%;
 }
 
 .chat-main.empty-chat .input-area {
@@ -721,10 +722,23 @@ textarea {
 
 .message.user {
     align-self: flex-end;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    color: var(--text);
+}
+
+.message-bubble {
     background: var(--surface);
     padding: 12px 16px;
     border-radius: 12px;
-    color: var(--text);
+    width: fit-content;
+    max-width: 100%;
+    margin-bottom: 2px;
+}
+
+.message-bubble p {
+    margin: 0;
 }
 
 .message.assistant {
@@ -1199,6 +1213,33 @@ textarea {
     border-radius: 6px;
     cursor: pointer;
     font-size: 12px;
+}
+
+.scroll-to-bottom-btn {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    z-index: 10;
+    flex-shrink: 0;
+    padding: 0;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.scroll-to-bottom-btn:hover {
+    background: var(--surface-hover);
+    transform: translateX(-50%) scale(1.05);
 }
 
 /* ── MOBILE RESPONSIVE ── */

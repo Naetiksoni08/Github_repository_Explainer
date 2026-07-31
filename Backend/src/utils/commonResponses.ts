@@ -1,9 +1,9 @@
-const COMMON_RESPONSES: { keywords: string[]; response: string }[] = [
+const COMMON_RESPONSES: { keywords: string[]; response: string,repoAware?: boolean  }[] = [
     { keywords: ["what are you", "who are you"], response: "I'm CodeLens AI — an assistant that helps you understand GitHub repositories. Paste a repo URL and ask me anything about the code, architecture, or errors." },
     { keywords: ["what can you do", "what do you do", "your capabilities"], response: "I can ingest a GitHub repository and help you: explain code and functions, summarize the project, debug errors, and answer architecture/behavior questions about the codebase." },
     { keywords: ["who made you", "who created you", "who built you"], response: "I'm a custom-built coding assistant designed to analyze GitHub repositories and answer programming questions." },
     { keywords: ["are you chatgpt", "are you gpt", "are you claude", "are you gemini"], response: "No, I'm CodeLens AI — a purpose-built assistant for repository analysis, running on free LLM models." },
-    { keywords: ["hi", "hello", "hey", "yo"], response: "Hey! Paste a GitHub repo URL to get started, or ask me a coding question directly." },
+    { keywords: ["hi", "hello", "hey", "yo"], response: "Hey! Paste a GitHub repo URL to get started, or ask me a coding question directly.", repoAware: true },
     { keywords: ["good morning"], response: "Good morning! Paste a GitHub repo URL whenever you're ready, or ask me a coding question." },
     { keywords: ["good night"], response: "Good night! Come back anytime you want to dig into a repo." },
     { keywords: ["thank you", "thanks", "thankyou"], response: "You're welcome! Let me know if you have more questions." },
@@ -25,20 +25,21 @@ function normalizeForMatch(query: string): string {
 }
 
 function matchesKeyword(normalized: string, keyword: string): boolean {
-    // Multi-word keywords ("who are you") ko phrase match chahiye,
-    // single-word keywords ("hi") ko word-boundary match chahiye
     const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const pattern = new RegExp(`\\b${escaped}\\b`);
     return pattern.test(normalized);
 }
 
-function getCommonResponse(query: string): string | null {
+function getCommonResponse(query: string, repoIngested: boolean = false): string | null {
     const normalized = normalizeForMatch(query);
-
     if (normalized.length > 60) return null;
 
     for (const entry of COMMON_RESPONSES) {
-        if (entry.keywords.some((kw) => normalized === kw || matchesKeyword(normalized, kw))) {
+        const isMatch = entry.keywords.some((kw) => normalized === kw || matchesKeyword(normalized, kw));
+        if (isMatch) {
+            if (entry.repoAware && repoIngested) {
+                return "Repository is ready — ask me anything about the code, architecture, or errors.";
+            }
             return entry.response;
         }
     }

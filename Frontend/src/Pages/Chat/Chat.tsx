@@ -57,6 +57,8 @@ const Chat = () => {
     const [ingestProgress, setIngestProgress] = useState<{ stage: string; percent: number } | null>(null)
     const [editingIndex, setEditingIndex] = useState<number | null>(null)
     const [editValue, setEditValue] = useState("")
+    const [showScrollButton, setShowScrollButton] = useState(false)
+    const messagesAreaRef = useRef<HTMLDivElement>(null)
 
     interface PastedFile {
         id: string
@@ -136,9 +138,6 @@ const Chat = () => {
     }, [])
 
     const messagesEndRef = useRef<HTMLDivElement>(null)
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [messages])
 
 
     const handleIngestWithProgress = async (trimmedUrl: string): Promise<boolean> => {
@@ -154,7 +153,18 @@ const Chat = () => {
                 },
                 body: JSON.stringify({ repoUrl: trimmedUrl, sessionId })
             })
-
+            
+            if (!response.ok) {
+                if (response.status === 429) {
+                    const data = await response.json().catch(() => null)
+                    toast.error(data?.message || "Too many ingest requests. Please wait before trying again.")
+                } else {
+                    toast.error("Something went wrong while analyzing repository")
+                }
+                setIngestProgress(null)
+                return false
+            }
+            
             if (!response.body) {
                 throw new Error("No response body")
             }
@@ -215,7 +225,7 @@ const Chat = () => {
             currentInput = currentInput + attachmentsText
         }
 
-        const userMessage = { role: "user", content: currentInput }
+        const userMessage = { role: "user", content: currentInput, timestamp: new Date().toISOString() }
         setMessages(prev => [...prev, userMessage])
         setInput("")
         setPastedFiles([])
@@ -263,6 +273,18 @@ const Chat = () => {
                     body: JSON.stringify({ sessionId, query: currentInput, repoUrl }),
                     signal: abortControllerRef.current.signal
                 })
+
+                if (!response.ok) {
+                    if (response.status === 429) {
+                        const data = await response.json().catch(() => null)
+                        toast.error(data?.message || "Too many requests. Please wait a few minutes and try again.")
+                    } else {
+                        toast.error("Something went wrong. Please try again.")
+                    }
+                    setMessages(prev => prev.slice(0, -1)) // empty assistant placeholder hataa do
+                    setLoading(false)
+                    return
+                }
 
                 const reader = response.body!.getReader()
                 const decoder = new TextDecoder()
@@ -710,8 +732,9 @@ const Chat = () => {
             setMessages(prev => prev.slice(0, index))
             setInput(target.content)
             setTimeout(() => textareaRef.current?.focus(), 0)
-        } catch {
+        } catch (err) {
             toast.error("Couldn't retry, please try again")
+            throw err  // yahan zaroori hai — caller ko pata chale ki fail hua
         }
     }
 
@@ -744,6 +767,23 @@ const Chat = () => {
             }, 0)
         }
     }
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [messages])
+
+    useEffect(() => {
+        const container = messagesAreaRef.current
+        if (!container) return
+
+        const handleScroll = () => {
+            const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+            setShowScrollButton(distanceFromBottom > 150)
+        }
+
+        container.addEventListener("scroll", handleScroll)
+        return () => container.removeEventListener("scroll", handleScroll)
+    }, [])
 
     useClickOutside(headerMenuRef, () => setShowSessionMenu(false), showSessionMenu)
     useClickOutside(logoutMenuRef, () => setShowLogoutModal(false), showLogoutModal)
@@ -868,7 +908,7 @@ const Chat = () => {
                     {messages.length > 0 && (
                         <span className='chat-title' onClick={() => setShowSessionMenu(!showSessionMenu)}>
                             {sessions.find(s => s.sessionId === sessionId)?.title || "New Chat"}
-                            <MdKeyboardArrowDown size={20} />
+                            <MdKeyboardArrowDown size={22} />
                         </span>
                     )}
 
@@ -928,7 +968,7 @@ const Chat = () => {
                         </button>
                     )}
                 </div>
-                <div className="messages-area">
+                <div className="messages-area" ref={messagesAreaRef}>
                     {loadingSession ? (
                         <Loader />
                     ) : ingestProgress ? (
@@ -1000,6 +1040,35 @@ const Chat = () => {
                                             </button>
                                         </div>
                                     </div>
+                                ) : msg.role === "user" ? (
+                                    <div className="message-bubble">
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
+                                            components={{
+                                                code({ className, children }) {
+                                                    return (
+                                                        <CodeBlock className={className}>
+                                                            {children}
+                                                        </CodeBlock>
+                                                    )
+                                                },
+                                                a({ href, children }) {
+                                                    return (
+                                                        <a
+                                                            href={href}
+                                                            target='_blank'
+                                                            rel="noopener noreferrer"
+                                                            className='markdown-link'
+                                                        >
+                                                            {children}
+                                                        </a>
+                                                    )
+                                                }
+                                            }}
+                                        >
+                                            {msg.content}
+                                        </ReactMarkdown>
+                                    </div>
                                 ) : (
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}
@@ -1042,8 +1111,15 @@ const Chat = () => {
                                                     onClick={async () => {
                                                         const lastUserMsg = messages[index - 1]
                                                         if (lastUserMsg?.role !== "user") return
-                                                        await handleRetry(index - 1)
-                                                        await handleSend(lastUserMsg.content)
+                                                        if (!lastUserMsg.timestamp) {
+                                                            toast.error("Can't retry this message — missing data")
+                                                            return
+                                                        }
+                                                        try {
+                                                            await handleRetry(index - 1)
+                                                            await handleSend(lastUserMsg.content)
+                                                        } catch {
+                                                        }
                                                     }}
                                                 >
                                                     <FiRefreshCw size={12} />
@@ -1132,6 +1208,16 @@ const Chat = () => {
                     )}
                     <div ref={messagesEndRef}></div>
                 </div>
+                {showScrollButton && (
+                    <button
+                        className="scroll-to-bottom-btn"
+                        onClick={() => {
+                            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+                        }}
+                    >
+                        <MdKeyboardArrowDown size={20} />
+                    </button>
+                )}
                 {!loadingSession && (
                     <div className="input-area">
                         {pastedFiles.length > 0 && (
