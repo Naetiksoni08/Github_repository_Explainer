@@ -59,6 +59,7 @@ const Chat = () => {
     const [editValue, setEditValue] = useState("")
     const [showScrollButton, setShowScrollButton] = useState(false)
     const messagesAreaRef = useRef<HTMLDivElement>(null)
+    const [warningDismissed, setWarningDismissed] = useState(false)
 
     interface PastedFile {
         id: string
@@ -68,8 +69,12 @@ const Chat = () => {
 
     const PASTE_LINE_THRESHOLD = 100
     const PASTE_CHAR_THRESHOLD = 6000
-    const MAX_TOTAL_PASTE_CHARS = 12000 // combined cap across all pasted files in one message
+    const MAX_TOTAL_PASTE_CHARS = 12000
+    const SOFT_LIMIT = 80
+    const HARD_LIMIT = 100
 
+    const isSoftLimit = messages.length >= SOFT_LIMIT && messages.length < HARD_LIMIT
+    const isHardLimit = messages.length >= HARD_LIMIT
     const navigate = useNavigate();
     const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -86,6 +91,7 @@ const Chat = () => {
             setRepoUrl(data.repoUrl?.trim() || "");
             setRepoIngested(true);
             setMessages(data.messages)
+            setWarningDismissed(false) 
             localStorage.setItem("activeSession", session.sessionId);
         } catch (error) {
             toast.error("Failed to Load Session")
@@ -99,6 +105,7 @@ const Chat = () => {
         setRepoUrl("");
         setRepoIngested(false)
         setMessages([]);
+        setWarningDismissed(false)
     }
 
     const fetchSession = async () => {
@@ -153,7 +160,7 @@ const Chat = () => {
                 },
                 body: JSON.stringify({ repoUrl: trimmedUrl, sessionId })
             })
-            
+
             if (!response.ok) {
                 if (response.status === 429) {
                     const data = await response.json().catch(() => null)
@@ -164,7 +171,7 @@ const Chat = () => {
                 setIngestProgress(null)
                 return false
             }
-            
+
             if (!response.body) {
                 throw new Error("No response body")
             }
@@ -214,6 +221,10 @@ const Chat = () => {
 
     const handleSend = async (overrideText?: string) => {
         if (loading) return
+        if (messages.length >= HARD_LIMIT) {
+            toast.error("This conversation has reached its limit. Please start a new chat.")
+            return
+        }
         const textToSend = overrideText ?? input
         if (!textToSend.trim() && pastedFiles.length === 0) return
 
@@ -1218,6 +1229,23 @@ const Chat = () => {
                         <MdKeyboardArrowDown size={20} />
                     </button>
                 )}
+
+                {isHardLimit && (
+                    <div className="session-limit-banner hard">
+                        <span>This conversation has reached its limit. Please start a new chat to continue.</span>
+                        <button onClick={handleNewChat}>Start New Chat</button>
+                    </div>
+                )}
+
+                {isSoftLimit && !warningDismissed && (
+                    <div className="session-limit-banner soft">
+                        <span>This conversation is getting long. Starting fresh keeps things fast.</span>
+                        <div className="session-limit-actions">
+                            <button className="continue-btn" onClick={() => setWarningDismissed(true)}>Continue</button>
+                            <button className="new-chat-btn-inline" onClick={handleNewChat}>Start New Chat</button>
+                        </div>
+                    </div>
+                )}
                 {!loadingSession && (
                     <div className="input-area">
                         {pastedFiles.length > 0 && (
@@ -1250,10 +1278,11 @@ const Chat = () => {
                                         handleSend()
                                     }
                                 }}
-                                placeholder={repoIngested ? "Analyze code, explain logic, or ask questions..." : "Paste a GitHub URL to analyze repository..."}
+                                placeholder={isHardLimit ? "Start a new chat to continue..." : (repoIngested ? "Analyze code, explain logic, or ask questions..." : "Paste a GitHub URL to analyze repository...")}
                                 value={displayValue}
                                 onChange={(e) => setInput(e.target.value)}
                                 rows={1}
+                                disabled={isHardLimit}
                                 style={{ opacity: isListening ? 0 : 1 }}
                             />
                             {isListening && (
@@ -1282,9 +1311,10 @@ const Chat = () => {
                                 </button>
                                 <button
                                     onClick={loading ? handleAbort : () => handleSend()}
+                                    disabled={isHardLimit && !loading}
                                     style={{
-                                        opacity: loading ? 0.7 : 1,
-                                        cursor: loading ? 'default' : 'pointer'
+                                        opacity: (loading ? 0.7 : 1),
+                                        cursor: (loading || isHardLimit) ? 'default' : 'pointer'
                                     }}
                                 >
                                     {loading ? <FiSquare size={16} /> : <FiSend size={18} />}
