@@ -20,106 +20,64 @@ import { jsPDF } from 'jspdf';
 import { HiEllipsisVertical } from "react-icons/hi2";
 import { IoClose } from 'react-icons/io5';
 import useClickOutside from '../../utils/useClickOutside';
+import { useVoiceInput } from '../../hooks/useVoiceInput';
+import { useScrollBehavior } from '../../hooks/useScrollBehavior'
+import { usePastedFiles } from '../../hooks/usePastedFiles'
+import { useSessions } from '../../hooks/useSessions'
+import { useIngest } from '../../hooks/useIngest'
 
 const Chat = () => {
     const [messages, setMessages] = useState<any[]>([])
     const [input, setInput] = useState("")
     const [loading, setLoading] = useState(false)
-    const [sessions, setSessions] = useState<any[]>([])
-    const [sessionId, setSessionId] = useState(crypto.randomUUID())
-    const [repoUrl, setRepoUrl] = useState("")
-    const [repoIngested, setRepoIngested] = useState(false)
     const [user, setUser] = useState<any>(null);
-    const [showSessions, setShowSessions] = useState(true);
-    const [loadingSession, setLoadingSession] = useState(false)
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
-    const [showSearch, setShowSearch] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("")
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
     const [isDark, setIsDark] = useState(true) // default dark
     const [showSessionMenu, setShowSessionMenu] = useState(false)
-    const [isRenaming, setIsRenaming] = useState(false)
-    const [renameValue, setRenameValue] = useState("")
     const [githubRepos, setGithubRepos] = useState<any[]>([])
-    const [showDeleteModal, setShowDeleteModal] = useState(false)
-    const [isListening, setIsListening] = useState(false)
-    const recognitionRef = useRef<any>(null)
-    const [interimText, setInterimText] = useState("")
-    const [activeMenuSessionId, setActiveMenuSessionId] = useState<string | null>(null);
-    const [renameTargetId, setRenameTargetId] = useState<string | null>(null)
-    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
     const headerMenuRef = useRef<HTMLDivElement>(null)
     const logoutMenuRef = useRef<HTMLDivElement>(null)
-    const sessionMenuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
-    const [pastedFiles, setPastedFiles] = useState<PastedFile[]>([])
-    const [previewFile, setPreviewFile] = useState<PastedFile | null>(null)
-    const [ingestProgress, setIngestProgress] = useState<{ stage: string; percent: number } | null>(null)
     const [editingIndex, setEditingIndex] = useState<number | null>(null)
     const [editValue, setEditValue] = useState("")
-    const [showScrollButton, setShowScrollButton] = useState(false)
-    const messagesAreaRef = useRef<HTMLDivElement>(null)
     const [warningDismissed, setWarningDismissed] = useState(false)
-
-    interface PastedFile {
-        id: string
-        content: string
-        lineCount: number
-    }
-
-    const PASTE_LINE_THRESHOLD = 100
-    const PASTE_CHAR_THRESHOLD = 6000
-    const MAX_TOTAL_PASTE_CHARS = 12000
+    const { isListening, interimText, handleMicClick, displayValue } = useVoiceInput(input, setInput)
+    const { messagesEndRef, messagesAreaRef, showScrollButton, scrollToBottom } = useScrollBehavior(messages)
+    const {
+        pastedFiles,
+        previewFile,
+        setPreviewFile,
+        handlePaste,
+        removePastedFile,
+        buildAttachmentsText,
+        clearPastedFiles
+    } = usePastedFiles(() => textareaRef.current?.focus())
+    const navigate = useNavigate()
+    const {
+        sessions, sessionId, repoUrl, setRepoUrl, repoIngested, setRepoIngested,
+        loadingSession, showSessions, setShowSessions, searchQuery, setSearchQuery,
+        showSearch, setShowSearch, activeMenuSessionId, setActiveMenuSessionId,
+        renameTargetId, setRenameTargetId, renameValue, setRenameValue,
+        isRenaming, setIsRenaming, deleteTargetId, showDeleteModal, setShowDeleteModal,
+        sessionMenuRefs, Filtersession, starredSessions, normalSessions, currentSessionStarred,
+        fetchSession, handleSessionClick, handleNewChat, handleHome, HandleSearchClick,
+        handleRename, handleStarSession, handleDelete, confirmDelete
+    } = useSessions({
+        setMessages,
+        resetWarning: () => setWarningDismissed(false),
+        navigate 
+    })
+    
+    const { ingestProgress, handleIngestWithProgress } = useIngest(sessionId) 
+    
     const SOFT_LIMIT = 80
     const HARD_LIMIT = 100
 
     const isSoftLimit = messages.length >= SOFT_LIMIT && messages.length < HARD_LIMIT
     const isHardLimit = messages.length >= HARD_LIMIT
-    const navigate = useNavigate();
     const abortControllerRef = useRef<AbortController | null>(null)
 
-    const handleSessionClick = async (session: any) => {
-        if (loadingSession) return
-        setLoadingSession(true);
-        try {
-            await new Promise(res => setTimeout(res, 2000))
-            const response = await api.get(`/api/sessions/${session.sessionId}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-            })
-            const data = response.data.data;
-            setSessionId(data.sessionId);
-            setRepoUrl(data.repoUrl?.trim() || "");
-            setRepoIngested(true);
-            setMessages(data.messages)
-            setWarningDismissed(false) 
-            localStorage.setItem("activeSession", session.sessionId);
-        } catch (error) {
-            toast.error("Failed to Load Session")
-        } finally {
-            setLoadingSession(false);
-        }
-    }
-
-    const handleNewChat = () => {
-        setSessionId(crypto.randomUUID());
-        setRepoUrl("");
-        setRepoIngested(false)
-        setMessages([]);
-        setWarningDismissed(false)
-    }
-
-    const fetchSession = async () => {
-        const response = await api.get('/api/sessions', {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        })
-        setSessions(response.data.data);
-    }
-    const Filtersession = sessions.filter(
-        session => session.title?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    const starredSessions = sessions.filter(s => s.starred)
-    const normalSessions = sessions.filter(s => !s.starred)
-    const currentSessionStarred = sessions.find(s => s.sessionId === sessionId)?.starred
 
     useEffect(() => {
         const init = async () => {
@@ -144,81 +102,6 @@ const Chat = () => {
         init();
     }, [])
 
-    const messagesEndRef = useRef<HTMLDivElement>(null)
-
-
-    const handleIngestWithProgress = async (trimmedUrl: string): Promise<boolean> => {
-        setIngestProgress({ stage: "starting", percent: 0 })
-        const token = localStorage.getItem("token")
-
-        try {
-            const response = await fetch("http://localhost:5001/api/ingest", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ repoUrl: trimmedUrl, sessionId })
-            })
-
-            if (!response.ok) {
-                if (response.status === 429) {
-                    const data = await response.json().catch(() => null)
-                    toast.error(data?.message || "Too many ingest requests. Please wait before trying again.")
-                } else {
-                    toast.error("Something went wrong while analyzing repository")
-                }
-                setIngestProgress(null)
-                return false
-            }
-
-            if (!response.body) {
-                throw new Error("No response body")
-            }
-
-            const reader = response.body.getReader()
-            const decoder = new TextDecoder()
-
-            while (true) {
-                const { done, value } = await reader.read()
-                if (done) break
-
-                const text = decoder.decode(value)
-                const lines = text.split("\n")
-
-                for (const line of lines) {
-                    if (line.startsWith("data: ")) {
-                        const raw = line.slice(6)
-                        if (!raw.trim()) continue
-
-                        const parsed = JSON.parse(raw)
-
-                        if (parsed.error) {
-                            toast.error(parsed.message || "Ingest failed")
-                            setIngestProgress(null)
-                            return false
-                        }
-
-                        if (parsed.done) {
-                            setIngestProgress(null)
-                            return true
-                        }
-
-                        setIngestProgress({ stage: parsed.stage, percent: parsed.percent })
-                    }
-                }
-            }
-
-            setIngestProgress(null)
-            return true
-        } catch (err) {
-            console.error("Ingest stream error:", err)
-            toast.error("Something went wrong while analyzing repository")
-            setIngestProgress(null)
-            return false
-        }
-    }
-
     const handleSend = async (overrideText?: string) => {
         if (loading) return
         if (messages.length >= HARD_LIMIT) {
@@ -230,16 +113,13 @@ const Chat = () => {
 
         let currentInput = textToSend
         if (pastedFiles.length > 0) {
-            const attachmentsText = pastedFiles
-                .map(f => `\n\n[Pasted content - ${f.lineCount} lines]\n\`\`\`\n${f.content}\n\`\`\``)
-                .join('')
-            currentInput = currentInput + attachmentsText
+            currentInput = currentInput + buildAttachmentsText()
         }
 
         const userMessage = { role: "user", content: currentInput, timestamp: new Date().toISOString() }
         setMessages(prev => [...prev, userMessage])
         setInput("")
-        setPastedFiles([])
+        clearPastedFiles()
         setLoading(true)
         localStorage.setItem("activeSession", sessionId);
 
@@ -411,88 +291,6 @@ const Chat = () => {
         }
     }
 
-    const baseTextRef = useRef("")
-    const processedFinalCountRef = useRef(0)
-
-    useEffect(() => {
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-        if (!SpeechRecognition) return
-
-        const recognition = new SpeechRecognition()
-        recognition.continuous = true
-        recognition.interimResults = true
-        recognition.lang = "en-US"
-
-        recognition.onresult = (event: any) => {
-            let newFinalChunk = ""
-            let interimChunk = ""
-
-            for (let i = 0; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript
-                if (event.results[i].isFinal) {
-                    // Sirf wahi finals process karo jo pehle count nahi hue
-                    if (i >= processedFinalCountRef.current) {
-                        newFinalChunk += transcript + " "
-                    }
-                } else {
-                    interimChunk += transcript
-                }
-            }
-
-            // Update how many finals we've now consumed
-            let finalCount = 0
-            for (let i = 0; i < event.results.length; i++) {
-                if (event.results[i].isFinal) finalCount++
-            }
-            processedFinalCountRef.current = finalCount
-
-            if (newFinalChunk) {
-                baseTextRef.current = baseTextRef.current
-                    ? `${baseTextRef.current} ${newFinalChunk.trim()}`
-                    : newFinalChunk.trim()
-                setInput(baseTextRef.current)
-            }
-            setInterimText(interimChunk)
-        }
-
-        recognition.onend = () => {
-            setIsListening(false)
-        }
-
-        recognition.onerror = () => {
-            setIsListening(false)
-            toast.error("Couldn't hear that, try again")
-        }
-
-        recognitionRef.current = recognition
-    }, [])
-
-    const handleMicClick = () => {
-        if (!recognitionRef.current) {
-            toast.error("Voice input not supported in this browser")
-            return
-        }
-        if (isListening) {
-            recognitionRef.current.stop()
-            setIsListening(false)
-            setInterimText("")
-        } else {
-            baseTextRef.current = input
-            processedFinalCountRef.current = 0 // reset counter for fresh session
-            recognitionRef.current.start()
-            setIsListening(true)
-        }
-    }
-
-    const handleHome = () => {
-        localStorage.removeItem("activeSession");
-        setSessionId(crypto.randomUUID());
-        setRepoUrl("");
-        setRepoIngested(false);
-        setMessages([])
-        navigate("/home")
-    }
-
     const handleLogout = () => {
         toast.success("Logged out successfully");
         setTimeout(() => {
@@ -500,16 +298,6 @@ const Chat = () => {
             navigate("/auth");
         }, 1000);
     }
-
-    const HandleSearchClick = async () => {
-        setShowSearch(true);
-        await api.get('/api/search', {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        })
-    }
-    const displayValue = isListening && interimText
-        ? `${input}${input ? " " : ""}${interimText}`
-        : input
 
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     useEffect(() => {
@@ -536,59 +324,6 @@ const Chat = () => {
                 )
             } catch { /* ignore */ }
         }
-    }
-    const handleRename = async () => {
-        if (!renameTargetId) return
-        await api.patch(`/api/sessions/${renameTargetId}`, { title: renameValue }, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-        })
-        await fetchSession();
-        setIsRenaming(false);
-        setRenameTargetId(null);
-    }
-
-
-    const handleStarSession = async (targetId: string) => {
-        const target = sessions.find(s => s.sessionId === targetId);
-        if (!target?.starred && starredSessions.length >= 3) {
-            toast.error("Max 3 starred sessions allowed");
-            return;
-        }
-        await api.patch(`/api/sessions/${targetId}/star`, {}, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-        })
-        setShowSessionMenu(false);
-        setActiveMenuSessionId(null);
-        await fetchSession();
-    }
-
-    const handleDelete = (targetId: string) => {
-        setShowSessionMenu(false)
-        setActiveMenuSessionId(null)
-        setDeleteTargetId(targetId)
-        setShowDeleteModal(true)
-    }
-
-
-    const confirmDelete = async () => {
-        if (!deleteTargetId) return
-        const CurrentIndex = sessions.findIndex(s => s.sessionId === deleteTargetId);
-        const nextSession = sessions[CurrentIndex + 1] || sessions[CurrentIndex - 1] || null;
-        await api.delete(`/api/sessions/${deleteTargetId}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-        })
-        setShowDeleteModal(false)
-        toast.success("Chat deleted")
-        await fetchSession();
-        // sirf tabhi navigate/reset karo jab active session hi delete hui ho
-        if (deleteTargetId === sessionId) {
-            if (nextSession) {
-                handleSessionClick(nextSession)
-            } else {
-                handleNewChat();
-            }
-        }
-        setDeleteTargetId(null)
     }
 
     const ExportPdfHandler = async () => {
@@ -674,20 +409,6 @@ const Chat = () => {
         toast.success("PDF downloaded!")
     }
 
-    useEffect(() => {
-        if (!activeMenuSessionId) return
-
-        const handleClick = (e: MouseEvent) => {
-            const currentRef = sessionMenuRefs.current[activeMenuSessionId]
-            if (currentRef && !currentRef.contains(e.target as Node)) {
-                setActiveMenuSessionId(null)
-            }
-        }
-
-        document.addEventListener("mousedown", handleClick)
-        return () => document.removeEventListener("mousedown", handleClick)
-    }, [activeMenuSessionId])
-
     const renderSessionItem = (session: any) => (
         <div
             key={session.sessionId}
@@ -749,52 +470,7 @@ const Chat = () => {
         }
     }
 
-    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-        const pastedText = e.clipboardData.getData('text')
-        if (!pastedText) return
 
-        const lineCount = pastedText.split('\n').length
-
-        if (lineCount > PASTE_LINE_THRESHOLD || pastedText.length > PASTE_CHAR_THRESHOLD) {
-            e.preventDefault()
-
-            const currentTotal = pastedFiles.reduce((sum, f) => sum + f.content.length, 0)
-
-            if (currentTotal + pastedText.length > MAX_TOTAL_PASTE_CHARS) {
-                toast.error(
-                    `Total pasted content limit reached (${MAX_TOTAL_PASTE_CHARS.toLocaleString()} chars). Remove a pasted file before adding more.`
-                )
-                return
-            }
-
-            const newFile: PastedFile = {
-                id: crypto.randomUUID(),
-                content: pastedText,
-                lineCount
-            }
-            setPastedFiles(prev => [...prev, newFile])
-            setTimeout(() => {
-                textareaRef.current?.focus()
-            }, 0)
-        }
-    }
-
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [messages])
-
-    useEffect(() => {
-        const container = messagesAreaRef.current
-        if (!container) return
-
-        const handleScroll = () => {
-            const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
-            setShowScrollButton(distanceFromBottom > 150)
-        }
-
-        container.addEventListener("scroll", handleScroll)
-        return () => container.removeEventListener("scroll", handleScroll)
-    }, [])
 
     useClickOutside(headerMenuRef, () => setShowSessionMenu(false), showSessionMenu)
     useClickOutside(logoutMenuRef, () => setShowLogoutModal(false), showLogoutModal)
@@ -1220,12 +896,7 @@ const Chat = () => {
                     <div ref={messagesEndRef}></div>
                 </div>
                 {showScrollButton && (
-                    <button
-                        className="scroll-to-bottom-btn"
-                        onClick={() => {
-                            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-                        }}
-                    >
+                    <button className="scroll-to-bottom-btn" onClick={scrollToBottom}>
                         <MdKeyboardArrowDown size={20} />
                     </button>
                 )}
@@ -1258,7 +929,7 @@ const Chat = () => {
                                             className="pasted-file-remove"
                                             onClick={(e) => {
                                                 e.stopPropagation()
-                                                setPastedFiles(prev => prev.filter(f => f.id !== file.id))
+                                                removePastedFile(file.id)
                                             }}
                                         >
                                             <IoClose size={12} />
