@@ -1531,9 +1531,10 @@ textarea {
     line-height: 1.5;
 }
 
-.input-area textarea::placeholder {
-    color: var(--text-muted);
-    font-size: 13px;
+.input-area textarea:placeholder-shown {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .voice-overlay-text {
