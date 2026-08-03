@@ -15,7 +15,6 @@ function AuthCallback() {
             localStorage.setItem("token", token)
             localStorage.setItem("user", user)
             
-            // Unique ID prevents duplicate toasts in Strict Mode
             toast.success(`Welcome ${parsedUser.name}`, { id: 'auth-success' });
             
             setTimeout(() => navigate("/"), 500)

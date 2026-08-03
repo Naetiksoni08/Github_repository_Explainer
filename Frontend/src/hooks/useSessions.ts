@@ -4,12 +4,14 @@ import api from '../utils/axios'
 import type { NavigateFunction } from 'react-router-dom'
 
 interface UseSessionsParams {
-    setMessages: (messages: any[]) => void
+    onSessionLoaded: (messages: any[]) => void
+    setMessages: React.Dispatch<React.SetStateAction<any[]>>
+    onNewChat: () => void
     resetWarning: () => void
     navigate: NavigateFunction
 }
 
-export function useSessions({ setMessages, resetWarning, navigate }: UseSessionsParams) {
+export function useSessions({ setMessages, onSessionLoaded, onNewChat, resetWarning, navigate }: UseSessionsParams) {
     const [sessions, setSessions] = useState<any[]>([])
     const [sessionId, setSessionId] = useState(crypto.randomUUID())
     const [repoUrl, setRepoUrl] = useState("")
@@ -53,7 +55,7 @@ export function useSessions({ setMessages, resetWarning, navigate }: UseSessions
             setSessionId(data.sessionId)
             setRepoUrl(data.repoUrl?.trim() || "")
             setRepoIngested(true)
-            setMessages(data.messages)
+            onSessionLoaded(data.messages)
             resetWarning()
             localStorage.setItem("activeSession", session.sessionId)
         } catch (error) {
@@ -67,7 +69,7 @@ export function useSessions({ setMessages, resetWarning, navigate }: UseSessions
         setSessionId(crypto.randomUUID())
         setRepoUrl("")
         setRepoIngested(false)
-        setMessages([])
+        onNewChat()
         resetWarning()
     }
 
@@ -76,7 +78,7 @@ export function useSessions({ setMessages, resetWarning, navigate }: UseSessions
         setSessionId(crypto.randomUUID())
         setRepoUrl("")
         setRepoIngested(false)
-        setMessages([])
+        onNewChat()
         navigate("/home")
     }
 
@@ -153,7 +155,7 @@ export function useSessions({ setMessages, resetWarning, navigate }: UseSessions
     }, [activeMenuSessionId])
 
     return {
-        sessions, sessionId, setSessionId, repoUrl, setRepoUrl, repoIngested, setRepoIngested,
+        setMessages, sessions, sessionId, setSessionId, repoUrl, setRepoUrl, repoIngested, setRepoIngested,
         loadingSession, showSessions, setShowSessions, searchQuery, setSearchQuery,
         showSearch, setShowSearch, activeMenuSessionId, setActiveMenuSessionId,
         renameTargetId, setRenameTargetId, renameValue, setRenameValue,

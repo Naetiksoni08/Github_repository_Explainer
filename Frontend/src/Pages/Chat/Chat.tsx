@@ -1,305 +1,87 @@
 import { useEffect, useRef, useState } from 'react'
 import "./Chat.css"
-import { FiCheck, FiEdit, FiSend, FiSquare, FiMic, FiFileText } from "react-icons/fi";
-import toast from 'react-hot-toast'
-import api from '../../utils/axios';
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm';
-import Loader from '../../utils/Loader';
+import Loader from '../../Components/Loader';
 import { useNavigate } from 'react-router-dom';
-import { FiSidebar, FiDownload } from "react-icons/fi";
-import { IoIosSearch } from "react-icons/io";
-import CodeBlock from '../../utils/CodeBlock'
-import { FiCopy, FiRefreshCw } from "react-icons/fi"
-import ThinkingLoader from "../../utils/ThinkerLoader"
-import { MdOutlineWbSunny, MdOutlineDarkMode, MdKeyboardArrowDown } from 'react-icons/md';
-import { GoPencil } from "react-icons/go";
-import { RiDeleteBin5Line } from "react-icons/ri";
-import { FaRegStar } from "react-icons/fa6";
-import { jsPDF } from 'jspdf';
-import { HiEllipsisVertical } from "react-icons/hi2";
-import { IoClose } from 'react-icons/io5';
+import ThinkingLoader from "../../Components/ThinkerLoader"
+import { MdKeyboardArrowDown } from 'react-icons/md';
 import useClickOutside from '../../utils/useClickOutside';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import { useScrollBehavior } from '../../hooks/useScrollBehavior'
 import { usePastedFiles } from '../../hooks/usePastedFiles'
 import { useSessions } from '../../hooks/useSessions'
 import { useIngest } from '../../hooks/useIngest'
+import { useChatMessages } from '../../hooks/useChatMessages'
+import DeleteModal from '../../Components/DeleteModal'
+import SearchModal from '../../Components/SearchModal'
+import Sidebar from '../../Components/Sidebar'
+import IngestProgress from '../../Components/IngestProgress'
+import SessionLimitBanner from '../../Components/SessionLimitBanner'
+import ChatHeader from '../../Components/ChatHeader'
+import MessageBubble from '../../Components/MessageBubble'
+import ChatInput from '../../Components/ChatInput'
+import { exportChatAsPdf } from '../../utils/pdfExport'
+import { useTheme } from '../../hooks/useTheme'
+import { useAppInit } from '../../hooks/useAppInit'
 
 const Chat = () => {
     const [messages, setMessages] = useState<any[]>([])
-    const [input, setInput] = useState("")
-    const [loading, setLoading] = useState(false)
-    const [user, setUser] = useState<any>(null);
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+    const [showLogoutModal, setShowLogoutModal] = useState(false)
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
-    const [isDark, setIsDark] = useState(true) // default dark
     const [showSessionMenu, setShowSessionMenu] = useState(false)
-    const [githubRepos, setGithubRepos] = useState<any[]>([])
+    const [warningDismissed, setWarningDismissed] = useState(false)
     const headerMenuRef = useRef<HTMLDivElement>(null)
     const logoutMenuRef = useRef<HTMLDivElement>(null)
-    const [editingIndex, setEditingIndex] = useState<number | null>(null)
-    const [editValue, setEditValue] = useState("")
-    const [warningDismissed, setWarningDismissed] = useState(false)
-    const { isListening, interimText, handleMicClick, displayValue } = useVoiceInput(input, setInput)
-    const { messagesEndRef, messagesAreaRef, showScrollButton, scrollToBottom } = useScrollBehavior(messages)
-    const {
-        pastedFiles,
-        previewFile,
-        setPreviewFile,
-        handlePaste,
-        removePastedFile,
-        buildAttachmentsText,
-        clearPastedFiles
-    } = usePastedFiles(() => textareaRef.current?.focus())
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
     const navigate = useNavigate()
     const {
         sessions, sessionId, repoUrl, setRepoUrl, repoIngested, setRepoIngested,
         loadingSession, showSessions, setShowSessions, searchQuery, setSearchQuery,
         showSearch, setShowSearch, activeMenuSessionId, setActiveMenuSessionId,
-        renameTargetId, setRenameTargetId, renameValue, setRenameValue,
-        isRenaming, setIsRenaming, deleteTargetId, showDeleteModal, setShowDeleteModal,
+        setRenameTargetId, renameValue, setRenameValue,
+        isRenaming, setIsRenaming, showDeleteModal, setShowDeleteModal,
         sessionMenuRefs, Filtersession, starredSessions, normalSessions, currentSessionStarred,
         fetchSession, handleSessionClick, handleNewChat, handleHome, HandleSearchClick,
         handleRename, handleStarSession, handleDelete, confirmDelete
     } = useSessions({
         setMessages,
+        onSessionLoaded: (msgs) => setMessages(msgs),
+        onNewChat: () => setMessages([]),
         resetWarning: () => setWarningDismissed(false),
-        navigate 
+        navigate
     })
-    
-    const { ingestProgress, handleIngestWithProgress } = useIngest(sessionId) 
-    
-    const SOFT_LIMIT = 80
+
+    const { user, githubRepos, handleLogout } = useAppInit({ handleSessionClick, fetchSession, navigate })
+    const { isDark, toggleTheme } = useTheme()
+
+    const { ingestProgress, handleIngestWithProgress } = useIngest(sessionId)
+
+    const {
+        pastedFiles, previewFile, setPreviewFile, handlePaste,
+        removePastedFile, buildAttachmentsText, clearPastedFiles
+    } = usePastedFiles(() => textareaRef.current?.focus())
+
     const HARD_LIMIT = 100
+
+    const {
+        input, setInput, loading, editingIndex, setEditingIndex, editValue, setEditValue,
+        handleSend, handleRetry, handleAbort
+    } = useChatMessages({
+        messages, setMessages, sessionId, repoUrl, repoIngested, setRepoIngested, setRepoUrl,
+        fetchSession, handleIngestWithProgress, pastedFiles, buildAttachmentsText,
+        clearPastedFiles, focusTextarea: () => textareaRef.current?.focus(),
+        hardLimit: HARD_LIMIT
+    })
+
+    const { isListening, interimText, handleMicClick, displayValue } = useVoiceInput(input, setInput)
+    const { messagesEndRef, messagesAreaRef, showScrollButton, scrollToBottom } = useScrollBehavior(messages)
+
+    const SOFT_LIMIT = 80
 
     const isSoftLimit = messages.length >= SOFT_LIMIT && messages.length < HARD_LIMIT
     const isHardLimit = messages.length >= HARD_LIMIT
-    const abortControllerRef = useRef<AbortController | null>(null)
 
 
-    useEffect(() => {
-        const init = async () => {
-            const storedUser = localStorage.getItem("user");
-            const parsedUser = storedUser ? JSON.parse(storedUser) : null;
-            if (parsedUser) setUser(parsedUser);
-
-            const savedSession = localStorage.getItem("activeSession")
-            if (savedSession) {
-                handleSessionClick({ sessionId: savedSession })
-            }
-
-            if (parsedUser?.githubId) {
-                const res = await api.get('/api/github/repos', {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                })
-                setGithubRepos(res.data.data)
-            }
-
-            fetchSession();
-        }
-        init();
-    }, [])
-
-    const handleSend = async (overrideText?: string) => {
-        if (loading) return
-        if (messages.length >= HARD_LIMIT) {
-            toast.error("This conversation has reached its limit. Please start a new chat.")
-            return
-        }
-        const textToSend = overrideText ?? input
-        if (!textToSend.trim() && pastedFiles.length === 0) return
-
-        let currentInput = textToSend
-        if (pastedFiles.length > 0) {
-            currentInput = currentInput + buildAttachmentsText()
-        }
-
-        const userMessage = { role: "user", content: currentInput, timestamp: new Date().toISOString() }
-        setMessages(prev => [...prev, userMessage])
-        setInput("")
-        clearPastedFiles()
-        setLoading(true)
-        localStorage.setItem("activeSession", sessionId);
-
-        try {
-            const token = localStorage.getItem("token");
-
-            const currentInputTrimmed = currentInput.trim()
-            const isGithubUrl = currentInputTrimmed.startsWith("https://github.com") || currentInputTrimmed.includes("github.com/")
-
-            const OTHER_REPO_HOSTS = ["gitlab.com", "bitbucket.org", "sourceforge.net", "codeberg.org"]
-            const isOtherRepoHost = OTHER_REPO_HOSTS.some((host) => currentInputTrimmed.includes(host))
-
-            if (!repoIngested && isOtherRepoHost && !isGithubUrl) {
-                toast.error("Currently only GitHub repositories are supported. Please paste a GitHub repo URL.")
-                setLoading(false)
-                return
-            }
-            if (!repoIngested && isGithubUrl) {
-                // INGEST FLOW
-                const trimmedUrl = currentInput.trim()
-                setRepoUrl(trimmedUrl)
-
-                const success = await handleIngestWithProgress(trimmedUrl)
-
-                if (success) {
-                    setRepoIngested(true)
-                    const aiMessage = { role: "assistant", content: "Repository analyzed!.", timestamp: new Date().toISOString() }
-                    setMessages(prev => [...prev, aiMessage])
-                    toast.success("Repository ready!")
-                    await fetchSession();
-                }
-            } else {
-                // CHAT FLOW — SSE streaming
-                setMessages(prev => [...prev, { role: "assistant", content: "", timestamp: new Date().toISOString() }])
-                abortControllerRef.current = new AbortController()
-                const response = await fetch("http://localhost:5001/api/chat", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ sessionId, query: currentInput, repoUrl }),
-                    signal: abortControllerRef.current.signal
-                })
-
-                if (!response.ok) {
-                    if (response.status === 429) {
-                        const data = await response.json().catch(() => null)
-                        toast.error(data?.message || "Too many requests. Please wait a few minutes and try again.")
-                    } else {
-                        toast.error("Something went wrong. Please try again.")
-                    }
-                    setMessages(prev => prev.slice(0, -1)) // empty assistant placeholder hataa do
-                    setLoading(false)
-                    return
-                }
-
-                const reader = response.body!.getReader()
-                const decoder = new TextDecoder()
-
-                let streamStarted = false
-                let buffer = "" // Incomplete lines ke liye
-
-                try {
-                    while (true) {
-                        const { done, value } = await reader.read()
-                        if (done) break
-
-                        // { stream: true } — multi-byte characters across chunks handle karega
-                        const text = decoder.decode(value, { stream: true })
-                        buffer += text
-                        const lines = buffer.split("\n")
-                        buffer = lines.pop() || "" // Last incomplete line buffer mein rakho
-
-                        for (const line of lines) {
-                            if (line.startsWith("data: ")) {
-                                const raw = line.slice(6).trim()
-                                if (!raw) continue // Empty chunk skip
-
-                                if (raw === "[DONE]") {
-                                    buffer = ""
-                                    break
-                                }
-
-                                if (raw === "[ERROR]") {
-                                    console.error("[SSE] Server reported stream error")
-                                    setMessages(prev => {
-                                        const updated = [...prev]
-                                        const last = updated[updated.length - 1]
-                                        if (last?.role === "assistant") {
-                                            updated[updated.length - 1] = { ...last, errored: true }
-                                        }
-                                        return updated
-                                    })
-                                    continue
-                                }
-
-                                // ========== FIX: Safe JSON parse ==========
-                                let chunk: any
-                                try {
-                                    chunk = JSON.parse(raw)
-                                } catch (parseErr) {
-                                    console.warn("[SSE] Invalid chunk skipped:", raw.slice(0, 50))
-                                    continue // Corrupt chunk skip, stream continue
-                                }
-
-                                // Ensure string (agar object aaya toh .content lo, warna String())
-                                const contentChunk = typeof chunk === "string"
-                                    ? chunk
-                                    : (chunk?.content ? String(chunk.content) : "")
-
-                                if (!streamStarted) {
-                                    setLoading(false)
-                                    streamStarted = true
-                                }
-
-                                if (contentChunk) {
-                                    setMessages(prev => {
-                                        const updated = [...prev]
-                                        updated[updated.length - 1] = {
-                                            ...updated[updated.length - 1],
-                                            content: updated[updated.length - 1].content + contentChunk
-                                        }
-                                        return updated
-                                    })
-                                }
-                            }
-                        }
-                    }
-                } catch (err: any) {
-                    if (err.name === "AbortError") {
-                        setMessages(prev => {
-                            const updated = [...prev]
-                            const last = updated[updated.length - 1]
-                            if (last?.role === "assistant") {
-                                updated[updated.length - 1] = { ...last, interrupted: true }
-                            }
-                            return updated
-                        })
-                        setLoading(false)
-                        return
-                    }
-                    throw err
-                }
-            }
-            await fetchSession();
-        } catch (error: any) {
-            if (error?.name === "AbortError") {
-                setMessages(prev => {
-                    const updated = [...prev]
-                    const last = updated[updated.length - 1]
-                    if (last?.role === "assistant") {
-                        updated[updated.length - 1] = { ...last, interrupted: true }
-                    }
-                    return updated
-                })
-                return
-            }
-            toast.error(error?.response?.data?.message || "Something Went Wrong")
-            setMessages(prev => {
-                const last = prev[prev.length - 1]
-                if (last?.role === "assistant" && !last.content) {
-                    return prev.slice(0, -1)
-                }
-                return prev
-            })
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const handleLogout = () => {
-        toast.success("Logged out successfully");
-        setTimeout(() => {
-            localStorage.clear();
-            navigate("/auth");
-        }, 1000);
-    }
-
-    const textareaRef = useRef<HTMLTextAreaElement>(null)
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -308,372 +90,80 @@ const Chat = () => {
         }
     }, [input, interimText])
 
-    useEffect(() => {
-        const saved = localStorage.getItem("theme");
-        setIsDark(saved !== "light")
-    }, [])
-
-    const handleAbort = async () => {
-        abortControllerRef.current?.abort()
-        const lastMsg = messages[messages.length - 1]
-        if (lastMsg?.role === "assistant") {
-            try {
-                await api.patch(`/api/sessions/${sessionId}/mark-interrupted`,
-                    { timestamp: lastMsg.timestamp, content: lastMsg.content },
-                    { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-                )
-            } catch { /* ignore */ }
-        }
-    }
-
-    const ExportPdfHandler = async () => {
-        if (messages.length === 0) return
-        const sessionTitle = sessions.find(s => s.sessionId === sessionId)?.title || "Chat Export";
-        const doc = new jsPDF({ unit: "mm", format: "a4" })
-
-        const pageWidth = doc.internal.pageSize.getWidth()
-        const pageHeight = doc.internal.pageSize.getHeight()
-        const margin = 15
-        const maxWidth = pageWidth - margin * 2
-        let y = 20
-        // Title
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(18)
-        doc.text(sessionTitle, margin, y)
-        y += 8
-
-        // Date subtitle
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(9)
-        doc.setTextColor(120, 120, 120)
-        doc.text(`Exported on ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}`, margin, y)
-        y += 10
-        // Separator
-        doc.setDrawColor(200, 200, 200)
-        doc.line(margin, y, pageWidth - margin, y)
-        y += 8
-
-        for (const msg of messages) {
-            const isUser = msg.role === "user"
-            const label = isUser ? "You" : "CodeLens AI"
-
-            // Page overflow check
-            if (y + 20 > pageHeight - 15) {
-                doc.addPage()
-                y = 15
-            }
-
-            // Role label
-            doc.setFont("helvetica", "bold")
-            doc.setFontSize(11)
-            doc.setTextColor(isUser ? 80 : 30, isUser ? 80 : 120, isUser ? 80 : 80)
-            doc.text(label, margin, y)
-            y += 6
-            // Clean markdown from content
-            const cleaned = (msg.content || "")
-                .replace(/```[\s\S]*?```/g, (match: string) => {
-                    return match.replace(/```\w*\n?/g, "").replace(/```/g, "").trim()
-                })
-                .replace(/\*\*(.*?)\*\*/g, "$1")
-                .replace(/\*(.*?)\*/g, "$1")
-                .replace(/#{1,6}\s/g, "")
-                .replace(/`([^`]+)`/g, "$1")
-
-            // Write content with line wrapping
-            doc.setFont("helvetica", "normal")
-            doc.setFontSize(10)
-            doc.setTextColor(50, 50, 50)
-
-            const lines = doc.splitTextToSize(cleaned, maxWidth)
-            for (const line of lines) {
-                if (y + 6 > pageHeight - 15) {
-                    doc.addPage()
-                    y = 15
-                }
-                doc.text(line, margin, y)
-                y += 5
-            }
-
-            y += 6
-            if (y + 4 > pageHeight - 15) {
-                doc.addPage()
-                y = 15
-            }
-            doc.setDrawColor(230, 230, 230)
-            doc.line(margin, y, pageWidth - margin, y)
-            y += 6
-        }
-
-        const filename = sessionTitle.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)
-        doc.save(`${filename}.pdf`)
-        toast.success("PDF downloaded!")
-    }
-
-    const renderSessionItem = (session: any) => (
-        <div
-            key={session.sessionId}
-            ref={(el) => { sessionMenuRefs.current[session.sessionId] = el }}
-            className={`session-item ${session.sessionId === sessionId ? "active" : ""}`}
-            onClick={() => !loadingSession && handleSessionClick(session)}
-        >
-            <span>{session.title || "Untitled Session"}</span>
-
-            <button
-                className="session-item-menu-btn"
-                onClick={(e) => {
-                    e.stopPropagation()
-                    setActiveMenuSessionId(activeMenuSessionId === session.sessionId ? null : session.sessionId)
-                }}
-            >
-                <HiEllipsisVertical size={16} />
-            </button>
-
-            {activeMenuSessionId === session.sessionId && (
-                <div className="session-menu" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => {
-                        setRenameValue(session.title || "");
-                        setRenameTargetId(session.sessionId);
-                        setIsRenaming(true);
-                        setActiveMenuSessionId(null);
-                    }}><GoPencil size={14} />Rename</button>
-
-                    <button className="delete-option" onClick={() => handleDelete(session.sessionId)}>
-                        <RiDeleteBin5Line size={14} />Delete
-                    </button>
-
-                    <button
-                        className="starred-option"
-                        onClick={() => handleStarSession(session.sessionId)}
-                        disabled={!session.starred && starredSessions.length >= 3}
-                    >
-                        <FaRegStar size={14} />
-                        {session.starred ? "Unstar" : "Star"}
-                    </button>
-                </div>
-            )}
-        </div>
-    )
-
-    const handleRetry = async (index: number) => {
-        const target = messages[index]
-        try {
-            await api.patch(`/api/sessions/${sessionId}/truncate`,
-                { fromTimestamp: target.timestamp },
-                { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-            )
-            setMessages(prev => prev.slice(0, index))
-            setInput(target.content)
-            setTimeout(() => textareaRef.current?.focus(), 0)
-        } catch (err) {
-            toast.error("Couldn't retry, please try again")
-            throw err  // yahan zaroori hai — caller ko pata chale ki fail hua
-        }
-    }
-
-
 
     useClickOutside(headerMenuRef, () => setShowSessionMenu(false), showSessionMenu)
     useClickOutside(logoutMenuRef, () => setShowLogoutModal(false), showLogoutModal)
     return (
         <div className={`chat-wrapper ${isDark ? "dark" : "light"}`}>
-            {showSearch && (
-                <div className="search-overlay" onClick={() => { setShowSearch(false); setSearchQuery("") }}>
-                    <div className="search-modal" onClick={(e) => e.stopPropagation()}>
-                        <input
-                            autoFocus
-                            type="text"
-                            placeholder="Search sessions..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="search-input"
-                        />
-                        <div className="search-results">
-                            {Filtersession.length > 0 ? (
-                                Filtersession.map((session: any) => (
-                                    <div key={session.sessionId} className="search-result-item"
-                                        onClick={() => {
-                                            handleSessionClick(session)
-                                            setShowSearch(false)
-                                            setSearchQuery("")
-                                        }}>
-                                        <span>{session.title || "Untitled"}</span>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="not-found">No sessions found</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-            {showDeleteModal && (
-                <div className="delete-overlay" onClick={() => setShowDeleteModal(false)}>
-                    <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
-                        <p>Are you sure you want to delete this chat?</p>
-                        <div className="delete-modal-actions">
-                            <button className="delete-modal-cancel" onClick={() => setShowDeleteModal(false)}>No</button>
-                            <button className="delete-modal-confirm" onClick={confirmDelete}>Yes, Delete</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            <div className={`sidebar ${isSidebarCollapsed ? "hidden" : ""}`}>
-                <div className="sidebar-header">
-                    <div className="nav-logo">
-                        <h2 onClick={handleHome} className="text-logo">CodeLens AI</h2>
-                        <button className='collapse-sidebar' onClick={() => setIsSidebarCollapsed(true)}>
-                            <FiSidebar size={16} />
-                        </button>
-                    </div>
-                    <button className="new-chat-btn" onClick={handleNewChat}>
-                        <FiEdit size={16} />
-                        <span>New Chat</span>
-                    </button>
-                    <button className="search-chat-btn" onClick={HandleSearchClick}>
-                        <IoIosSearch size={20} />
-                        <span>Search</span>
-                    </button>
-                    <button className='theme-toggle-btn' onClick={() => {
-                        const next = !isDark
-                        setIsDark(next)
-                        localStorage.setItem("theme", next ? "dark" : "light")
-                    }}>
-                        {isDark ? <MdOutlineWbSunny size={20} /> : <MdOutlineDarkMode size={20} />}
-                        <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
-                    </button>
-
-                </div>
-                <div className='recent-header'>
-                    <span className="recent-title">Recent</span>
-                    <button className='hide-btn' onClick={() => setShowSessions(!showSessions)}>
-                        {showSessions ? "Hide" : "Show"}
-                    </button>
-                </div>
-                {showSessions && (
-                    <div className="sessions-list">
-                        {starredSessions.length > 0 && (
-                            <>
-                                {starredSessions.map(renderSessionItem)}
-                                <div className="sessions-divider" />
-                            </>
-                        )}
-                        {normalSessions.map(renderSessionItem)}
-                    </div>
-                )}
-
-                <div className='user-profile-wrapper' ref={logoutMenuRef}>
-                    <div className='user-profile' onClick={(e) => {
-                        e.stopPropagation();
-                        setShowLogoutModal(!showLogoutModal)
-                    }}>
-                        <div className="avatar">
-                            <img
-                                src={user?.picture || "/avatar.svg"}
-                                alt="profile"
-                                className="avatar-img"
-                                referrerPolicy="no-referrer"
-                                onError={(e) => { (e.target as HTMLImageElement).src = "/avatar.svg" }}
-                            />
-                        </div>
-                        <span className='username'>{user?.name || "User"}</span>
-                    </div>
-
-                    {showLogoutModal && (
-                        <div className="logout-modal">
-                            <button onClick={handleLogout} className="logout-btn">Logout</button>
-                        </div>
-                    )}
-                </div>
-            </div>
+            <SearchModal
+                showSearch={showSearch}
+                setShowSearch={setShowSearch}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                Filtersession={Filtersession}
+                handleSessionClick={handleSessionClick}
+            />
+            <DeleteModal
+                showDeleteModal={showDeleteModal}
+                setShowDeleteModal={setShowDeleteModal}
+                confirmDelete={confirmDelete}
+            />
+            <Sidebar
+                isSidebarCollapsed={isSidebarCollapsed}
+                setIsSidebarCollapsed={setIsSidebarCollapsed}
+                handleHome={handleHome}
+                handleNewChat={handleNewChat}
+                HandleSearchClick={HandleSearchClick}
+                isDark={isDark}
+                toggleTheme={toggleTheme}
+                showSessions={showSessions}
+                setShowSessions={setShowSessions}
+                starredSessions={starredSessions}
+                normalSessions={normalSessions}
+                sessionId={sessionId}
+                loadingSession={loadingSession}
+                handleSessionClick={handleSessionClick}
+                activeMenuSessionId={activeMenuSessionId}
+                setActiveMenuSessionId={setActiveMenuSessionId}
+                sessionMenuRefs={sessionMenuRefs}
+                setRenameValue={setRenameValue}
+                setRenameTargetId={setRenameTargetId}
+                setIsRenaming={setIsRenaming}
+                handleDelete={handleDelete}
+                handleStarSession={handleStarSession}
+                user={user}
+                showLogoutModal={showLogoutModal}
+                setShowLogoutModal={setShowLogoutModal}
+                handleLogout={handleLogout}
+                logoutMenuRef={logoutMenuRef}
+            />
             <div className={`chat-main ${messages.length === 0 && githubRepos.length === 0 && !loadingSession ? 'empty-chat' : ''}`}>
-                <div className='chat-header'>
-                    {isSidebarCollapsed && (
-                        <button className="floating-toggle" onClick={() => setIsSidebarCollapsed(false)}>
-                            <FiSidebar size={20} />
-                        </button>
-                    )}
-                    {messages.length > 0 && (
-                        <span className='chat-title' onClick={() => setShowSessionMenu(!showSessionMenu)}>
-                            {sessions.find(s => s.sessionId === sessionId)?.title || "New Chat"}
-                            <MdKeyboardArrowDown size={22} />
-                        </span>
-                    )}
-
-                    {showSessionMenu && (
-                        <div className='session-menu' ref={headerMenuRef}>
-                            <button onClick={() => {
-                                setRenameValue(sessions.find(s => s.sessionId === sessionId)?.title || "");
-                                setRenameTargetId(sessionId);
-                                setIsRenaming(true);
-                                setShowSessionMenu(false);
-                            }}><GoPencil size={14} />Rename</button>
-
-                            <button className="delete-option" onClick={() => handleDelete(sessionId)}>
-                                <RiDeleteBin5Line size={14} />Delete
-                            </button>
-
-                            <button
-                                className="starred-option"
-                                onClick={() => handleStarSession(sessionId)}
-                                disabled={!currentSessionStarred && starredSessions.length >= 3}
-                            >
-                                <FaRegStar size={14} />
-                                {currentSessionStarred ? "Unstar" : "Star"}
-                            </button>
-                        </div>
-                    )}
-                    {isRenaming && (
-                        <div className="rename-overlay" onClick={() => setIsRenaming(false)}>
-                            <div className="rename-modal" onClick={(e) => e.stopPropagation()}>
-                                <div className="rename-modal-header">
-                                    <span>Edit name</span>
-                                    <button className="rename-modal-close" onClick={() => setIsRenaming(false)}>
-                                        <IoClose size={18} />
-                                    </button>
-                                </div>
-                                <input
-                                    autoFocus
-                                    className="rename-modal-input"
-                                    value={renameValue}
-                                    onChange={(e) => setRenameValue(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") handleRename()
-                                        if (e.key === "Escape") setIsRenaming(false)
-                                    }}
-                                />
-                                <div className="rename-modal-actions">
-                                    <button className="rename-modal-cancel" onClick={() => setIsRenaming(false)}>Cancel</button>
-                                    <button className="rename-modal-confirm" onClick={handleRename}>Confirm</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    {messages.length > 0 && (
-                        <button className="export-pdf-btn" onClick={() => ExportPdfHandler()}>
-                            <FiDownload size={20} />
-                            Export PDF
-                        </button>
-                    )}
-                </div>
+                <ChatHeader
+                    isSidebarCollapsed={isSidebarCollapsed}
+                    setIsSidebarCollapsed={setIsSidebarCollapsed}
+                    hasMessages={messages.length > 0}
+                    chatTitle={sessions.find(s => s.sessionId === sessionId)?.title || "New Chat"}
+                    showSessionMenu={showSessionMenu}
+                    setShowSessionMenu={setShowSessionMenu}
+                    headerMenuRef={headerMenuRef}
+                    sessionId={sessionId}
+                    setRenameValue={setRenameValue}
+                    setRenameTargetId={setRenameTargetId}
+                    setIsRenaming={setIsRenaming}
+                    handleDelete={handleDelete}
+                    handleStarSession={handleStarSession}
+                    currentSessionStarred={currentSessionStarred}
+                    starredSessions={starredSessions}
+                    isRenaming={isRenaming}
+                    renameValue={renameValue}
+                    handleRename={handleRename}
+                    onExportPdf={() => exportChatAsPdf(messages, sessions.find(s => s.sessionId === sessionId)?.title || "Chat Export")}
+                />
                 <div className="messages-area" ref={messagesAreaRef}>
                     {loadingSession ? (
                         <Loader />
                     ) : ingestProgress ? (
-                        <div className="ingest-progress-wrapper">
-                            <div className="ingest-progress-label">
-                                <span>
-                                    {ingestProgress.stage === "starting" && "Starting..."}
-                                    {ingestProgress.stage === "loading" && "Loading repository files..."}
-                                    {ingestProgress.stage === "chunking" && "Chunking code..."}
-                                    {ingestProgress.stage === "cleaning" && "Cleaning chunks..."}
-                                    {ingestProgress.stage === "storing" && "Storing in vector database..."}
-                                </span>
-                                <span>{ingestProgress.percent}%</span>
-                            </div>
-                            <div className="ingest-progress-track">
-                                <div className="ingest-progress-fill" style={{ width: `${ingestProgress.percent}%` }} />
-                            </div>
-                        </div>
+                        <IngestProgress ingestProgress={ingestProgress} />
                     ) : messages.length === 0 ? (
                         githubRepos.length > 0 ? (
                             <div className="repo-picker">
@@ -699,193 +189,22 @@ const Chat = () => {
                         )
                     ) : (
                         messages.map((msg, index) => (
-                            <div key={index} className={`message ${msg.role}`}>
-                                {editingIndex === index ? (
-                                    <div className="inline-edit-box">
-                                        <textarea
-                                            className="inline-edit-textarea"
-                                            value={editValue}
-                                            onChange={(e) => setEditValue(e.target.value)}
-                                            autoFocus
-                                            rows={Math.min(10, editValue.split("\n").length + 1)}
-                                        />
-                                        <div className="inline-edit-actions">
-                                            <button className="inline-edit-cancel" onClick={() => setEditingIndex(null)}>
-                                                Cancel
-                                            </button>
-                                            <button
-                                                className="inline-edit-save"
-                                                disabled={!editValue.trim()}
-                                                onClick={async () => {
-                                                    const trimmed = editValue.trim()
-                                                    await handleRetry(index)
-                                                    setEditingIndex(null)
-                                                    await handleSend(trimmed)
-                                                }}
-                                            >
-                                                Save & Submit
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : msg.role === "user" ? (
-                                    <div className="message-bubble">
-                                        <ReactMarkdown
-                                            remarkPlugins={[remarkGfm]}
-                                            components={{
-                                                code({ className, children }) {
-                                                    return (
-                                                        <CodeBlock className={className}>
-                                                            {children}
-                                                        </CodeBlock>
-                                                    )
-                                                },
-                                                a({ href, children }) {
-                                                    return (
-                                                        <a
-                                                            href={href}
-                                                            target='_blank'
-                                                            rel="noopener noreferrer"
-                                                            className='markdown-link'
-                                                        >
-                                                            {children}
-                                                        </a>
-                                                    )
-                                                }
-                                            }}
-                                        >
-                                            {msg.content}
-                                        </ReactMarkdown>
-                                    </div>
-                                ) : (
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                            code({ className, children }) {
-                                                return (
-                                                    <CodeBlock className={className}>
-                                                        {children}
-                                                    </CodeBlock>
-                                                )
-                                            },
-                                            a({ href, children }) {
-                                                return (
-                                                    <a
-                                                        href={href}
-                                                        target='_blank'
-                                                        rel="noopener noreferrer"
-                                                        className='markdown-link'
-                                                    >
-                                                        {children}
-                                                    </a>
-                                                )
-                                            }
-                                        }}
-                                    >
-                                        {msg.content}
-                                    </ReactMarkdown>
-                                )}
-
-                                {editingIndex !== index && msg.interrupted && (
-                                    <div className="interrupted-card">
-                                        <div className="interrupted-card-text">
-                                            <span className="interrupted-dot" />
-                                            <span>Response was interrupted</span>
-                                        </div>
-                                        {!msg.dismissed && (
-                                            <div className="interrupted-card-actions">
-                                                <button
-                                                    className="interrupted-try-again"
-                                                    onClick={async () => {
-                                                        const lastUserMsg = messages[index - 1]
-                                                        if (lastUserMsg?.role !== "user") return
-                                                        if (!lastUserMsg.timestamp) {
-                                                            toast.error("Can't retry this message — missing data")
-                                                            return
-                                                        }
-                                                        try {
-                                                            await handleRetry(index - 1)
-                                                            await handleSend(lastUserMsg.content)
-                                                        } catch {
-                                                        }
-                                                    }}
-                                                >
-                                                    <FiRefreshCw size={12} />
-                                                    Try again
-                                                </button>
-                                                <button
-                                                    className="interrupted-no-thanks"
-                                                    onClick={async () => {
-                                                        await api.patch(`/api/sessions/${sessionId}/dismiss-interrupt`,
-                                                            { timestamp: msg.timestamp },
-                                                            { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-                                                        )
-                                                        setMessages(prev => {
-                                                            const updated = [...prev]
-                                                            updated[index] = { ...updated[index], dismissed: true }
-                                                            return updated
-                                                        })
-                                                    }}
-                                                >
-                                                    No thanks
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {editingIndex !== index && msg.errored && (
-                                    <div className="error-retry-row">
-                                        <span className="interrupted-text">Something went wrong generating this response.</span>
-                                        <button className="retry-error-btn" onClick={() => handleRetry(index - 1)}>
-                                            <FiRefreshCw size={14} />
-                                            <span>Retry</span>
-                                        </button>
-                                    </div>
-                                )}
-
-                                {editingIndex !== index && msg.role === "user" && (
-                                    <div className="message-actions">
-                                        <button data-tooltip="Copy" onClick={() => {
-                                            navigator.clipboard.writeText(msg.content)
-                                            setCopiedIndex(index)
-                                            setTimeout(() => setCopiedIndex(null), 2000)
-                                        }}>
-                                            {copiedIndex === index ? <FiCheck size={14} /> : <FiCopy size={14} />}
-                                            <span>Copy</span>
-                                        </button>
-
-                                        <button data-tooltip="Edit" onClick={() => {
-                                            setEditingIndex(index)
-                                            setEditValue(msg.content)
-                                        }}>
-                                            <FiEdit size={14} />
-                                            <span>Edit</span>
-                                        </button>
-
-                                        <button data-tooltip="Retry" onClick={() => handleRetry(index)}>
-                                            <FiRefreshCw size={14} />
-                                            <span>Retry</span>
-                                        </button>
-                                    </div>
-                                )}
-
-                                {editingIndex !== index && msg.role === "assistant" && msg.content && (
-                                    <div className="message-footer">
-                                        {msg.timestamp && (
-                                            <span className="message-time">
-                                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        )}
-                                        <button className="footer-copy-btn" data-tooltip="Copy" onClick={() => {
-                                            navigator.clipboard.writeText(msg.content)
-                                            setCopiedIndex(index)
-                                            setTimeout(() => setCopiedIndex(null), 2000)
-                                        }}>
-                                            {copiedIndex === index ? <FiCheck size={15} /> : <FiCopy size={15} />}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                            <MessageBubble
+                                key={index}
+                                msg={msg}
+                                index={index}
+                                messages={messages}
+                                sessionId={sessionId}
+                                setMessages={setMessages}
+                                editingIndex={editingIndex}
+                                setEditingIndex={setEditingIndex}
+                                editValue={editValue}
+                                setEditValue={setEditValue}
+                                copiedIndex={copiedIndex}
+                                setCopiedIndex={setCopiedIndex}
+                                handleRetry={handleRetry}
+                                handleSend={handleSend}
+                            />
                         ))
                     )}
                     {loading && !ingestProgress && (
@@ -901,110 +220,33 @@ const Chat = () => {
                     </button>
                 )}
 
-                {isHardLimit && (
-                    <div className="session-limit-banner hard">
-                        <span>This conversation has reached its limit. Please start a new chat to continue.</span>
-                        <button onClick={handleNewChat}>Start New Chat</button>
-                    </div>
-                )}
-
-                {isSoftLimit && !warningDismissed && (
-                    <div className="session-limit-banner soft">
-                        <span>This conversation is getting long. Starting fresh keeps things fast.</span>
-                        <div className="session-limit-actions">
-                            <button className="continue-btn" onClick={() => setWarningDismissed(true)}>Continue</button>
-                            <button className="new-chat-btn-inline" onClick={handleNewChat}>Start New Chat</button>
-                        </div>
-                    </div>
-                )}
+                <SessionLimitBanner
+                    isHardLimit={isHardLimit}
+                    isSoftLimit={isSoftLimit}
+                    warningDismissed={warningDismissed}
+                    setWarningDismissed={setWarningDismissed}
+                    handleNewChat={handleNewChat}
+                />
                 {!loadingSession && (
-                    <div className="input-area">
-                        {pastedFiles.length > 0 && (
-                            <div className="pasted-files-row">
-                                {pastedFiles.map(file => (
-                                    <div key={file.id} className="pasted-file-chip" onClick={() => setPreviewFile(file)}>
-                                        <FiFileText size={14} />
-                                        <span>Pasted text · {file.lineCount} lines</span>
-                                        <button
-                                            className="pasted-file-remove"
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                removePastedFile(file.id)
-                                            }}
-                                        >
-                                            <IoClose size={12} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="input-row">
-                            <textarea
-                                ref={textareaRef}
-                                onPaste={handlePaste}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey) {
-                                        e.preventDefault()
-                                        handleSend()
-                                    }
-                                }}
-                                placeholder={isHardLimit ? "Start a new chat to continue..." : (repoIngested ? "Analyze code, explain logic, or ask questions..." : "Paste a GitHub URL to analyze repository...")}
-                                value={displayValue}
-                                onChange={(e) => setInput(e.target.value)}
-                                rows={1}
-                                disabled={isHardLimit}
-                                style={{ opacity: isListening ? 0 : 1 }}
-                            />
-                            {isListening && (
-                                <div className="voice-overlay-text">
-                                    {!input && !interimText ? (
-                                        <span className="listening-dots">
-                                            <span className="dot">.</span>
-                                            <span className="dot">.</span>
-                                            <span className="dot">.</span>
-                                        </span>
-                                    ) : (
-                                        <>
-                                            <span className="final-text">{input}</span>
-                                            {interimText && <span className="interim-text"> {interimText}</span>}
-                                        </>
-                                    )}
-                                </div>
-                            )}
-                            <div className="input-actions">
-                                <button
-                                    onClick={handleMicClick}
-                                    className={isListening ? "mic-active" : ""}
-                                    data-tooltip={isListening ? "Listening..." : "Voice input"}
-                                >
-                                    <FiMic size={20} />
-                                </button>
-                                <button
-                                    onClick={loading ? handleAbort : () => handleSend()}
-                                    disabled={isHardLimit && !loading}
-                                    style={{
-                                        opacity: (loading ? 0.7 : 1),
-                                        cursor: (loading || isHardLimit) ? 'default' : 'pointer'
-                                    }}
-                                >
-                                    {loading ? <FiSquare size={16} /> : <FiSend size={18} />}
-                                </button>
-                            </div>
-                        </div>
-
-                        {previewFile && (
-                            <div className="preview-overlay" onClick={() => setPreviewFile(null)}>
-                                <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
-                                    <div className="preview-modal-header">
-                                        <span>Pasted text · {previewFile.lineCount} lines</span>
-                                        <button onClick={() => setPreviewFile(null)}><IoClose size={18} /></button>
-                                    </div>
-                                    <pre className="preview-modal-content">{previewFile.content}</pre>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    <ChatInput
+                        textareaRef={textareaRef}
+                        pastedFiles={pastedFiles}
+                        setPreviewFile={setPreviewFile}
+                        removePastedFile={removePastedFile}
+                        handlePaste={handlePaste}
+                        handleSend={handleSend}
+                        handleAbort={handleAbort}
+                        isHardLimit={isHardLimit}
+                        repoIngested={repoIngested}
+                        displayValue={displayValue}
+                        input={input}
+                        setInput={setInput}
+                        isListening={isListening}
+                        interimText={interimText}
+                        handleMicClick={handleMicClick}
+                        loading={loading}
+                        previewFile={previewFile}
+                    />
                 )}
 
             </div>
