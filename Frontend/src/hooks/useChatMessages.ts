@@ -81,7 +81,7 @@ export function useChatMessages({messages,setMessages,
             } else {
                 setMessages(prev => [...prev, { role: "assistant", content: "", timestamp: new Date().toISOString() }])
                 abortControllerRef.current = new AbortController()
-                const response = await fetch("http://localhost:5001/api/chat", {
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

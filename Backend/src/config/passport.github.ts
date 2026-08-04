@@ -6,7 +6,7 @@ import UserModel from "../models/user.modal";
 passport.use(new GithubStrategy({
     clientID: process.env.GITHUB_CLIENT_ID!,
     clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-    callbackURL: "http://localhost:5001/api/auth/github/callback"
+    callbackURL: `${process.env.BACKEND_URL}/api/auth/github/callback`
 }, async (accessToken: string, refreshToken: string, profile: any, done: any) => {
     try {
         // find user

@@ -12,11 +12,11 @@ const Auth = () => {
     }, [])
 
     const handleGoogleLogin = () => {
-        window.location.href = "http://localhost:5001/api/auth/google"
+        window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`
     }
-
+    
     const handleGithubLogin = () => {
-        window.location.href = "http://localhost:5001/api/auth/github"
+        window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/github`
     }
 
     return (

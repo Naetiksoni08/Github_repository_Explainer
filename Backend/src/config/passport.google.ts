@@ -8,7 +8,7 @@ import UserModel from "../models/user.modal";
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID!,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    callbackURL: "http://localhost:5001/api/auth/google/callback"
+    callbackURL: `${process.env.BACKEND_URL}/api/auth/google/callback`
 }, async (accessToken: string, refreshToken: string, profile: any, done: any) => {
     try {
         // find user

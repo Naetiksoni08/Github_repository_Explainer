@@ -6,17 +6,21 @@ import cors from "cors";
 import Router from "./routes/useRoutes";
 import DatabaseConnection from "./config/databse";
 import passport from "passport";
-import  "./config/passport.google"
-import  "./config/passport.github";
+import "./config/passport.google"
+import "./config/passport.github";
 import "./config/passport.jwt"
 
- 
+
 const app = express();
 const PORT = process.env.PORT || 5001;
 
 DatabaseConnection();
 
-app.use(cors());
+app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true
+}))
+
 app.use(express.json());
 app.use(passport.initialize())
 

@@ -15,7 +15,7 @@ export function useIngest(sessionId: string) {
         const token = localStorage.getItem("token")
 
         try {
-            const response = await fetch("http://localhost:5001/api/ingest", {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ingest`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
