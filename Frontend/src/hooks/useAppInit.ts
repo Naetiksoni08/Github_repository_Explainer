@@ -39,7 +39,9 @@ export function useAppInit({ handleSessionClick, fetchSession, navigate }: UseAp
     const handleLogout = () => {
         toast.success("Logged out successfully")
         setTimeout(() => {
-            localStorage.clear()
+            localStorage.removeItem("token")
+            localStorage.removeItem("user")
+            localStorage.removeItem("activeSession")
             navigate("/auth")
         }, 1000)
     }

@@ -1,12 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 export function useTheme() {
-    const [isDark, setIsDark] = useState(true)
-
-    useEffect(() => {
+    const [isDark, setIsDark] = useState(() => {
         const saved = localStorage.getItem("theme")
-        setIsDark(saved !== "light")
-    }, [])
+        return saved !== "light"
+    })
 
     const toggleTheme = () => {
         setIsDark(prev => {

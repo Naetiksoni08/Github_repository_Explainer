@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import "./Auth.css";
 import { useNavigate } from 'react-router-dom';
-import { IoIosArrowRoundBack } from "react-icons/io";
+import { IoIosArrowBack } from "react-icons/io";
 
 const Auth = () => {
     const navigate = useNavigate();
@@ -14,7 +14,7 @@ const Auth = () => {
     const handleGoogleLogin = () => {
         window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`
     }
-    
+
     const handleGithubLogin = () => {
         window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/github`
     }
@@ -22,7 +22,7 @@ const Auth = () => {
     return (
         <div className='auth-wrapper'>
             <button className='back-to-home' onClick={() => navigate("/home")}>
-                <IoIosArrowRoundBack size={30} />
+                <IoIosArrowBack size={22} />
                 Back To Home
             </button>
             <div className={`auth-card ${mounted ? "visible" : ""}`}>

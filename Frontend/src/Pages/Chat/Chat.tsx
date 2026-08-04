@@ -4,7 +4,7 @@ import Loader from '../../Components/Loader';
 import { useNavigate } from 'react-router-dom';
 import ThinkingLoader from "../../Components/ThinkerLoader"
 import { MdKeyboardArrowDown } from 'react-icons/md';
-import useClickOutside from '../../utils/useClickOutside';
+import useClickOutside from '../../hooks/useClickOutside';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import { useScrollBehavior } from '../../hooks/useScrollBehavior'
 import { usePastedFiles } from '../../hooks/usePastedFiles'

@@ -105,11 +105,13 @@ export function useSessions({ setMessages, onSessionLoaded, onNewChat, resetWarn
             toast.error("Max 3 starred sessions allowed")
             return
         }
+        const wasStarred = target?.starred
         await api.patch(`/api/sessions/${targetId}/star`, {}, {
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
         })
         setActiveMenuSessionId(null)
         await fetchSession()
+        toast.success(wasStarred ? "Session unstarred" : "Session starred!")
     }
 
     const handleDelete = (targetId: string) => {

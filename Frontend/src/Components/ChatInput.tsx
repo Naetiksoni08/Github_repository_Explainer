@@ -55,7 +55,7 @@ const ChatInput = ({
                                     removePastedFile(file.id)
                                 }}
                             >
-                                <IoClose size={12} />
+                                <IoClose size={14} />
                             </button>
                         </div>
                     ))}
