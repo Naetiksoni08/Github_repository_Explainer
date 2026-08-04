@@ -403,21 +403,4 @@ npm run dev            # http://localhost:5173
 MIT
 
 
----
-
-## What to customize before posting
-
-1. **Live demo URLs** — swap in your Vercel and Render links once deployed.
-2. **Screenshots** — add 2–3 images (landing, chat with streaming, ingestion progress). Recruiters skim these first.
-3. **Author section** — your name and links.
-4. **Production env wiring** — the frontend still points at `localhost:5001` in several files; call that out in the README and fix it before deploy (or note it as a known step).
-5. **OAuth callbacks** — `passport.google.ts`, `passport.github.ts`, and `auth.controller.ts` use localhost; update for Render/Vercel.
-
----
-
-## Optional: add a banner at the top
-
-```markdown
-![CodeLens AI Banner](docs/banner.png)
-
 
