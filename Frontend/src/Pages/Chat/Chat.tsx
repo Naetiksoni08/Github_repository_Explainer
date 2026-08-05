@@ -64,7 +64,7 @@ const Chat = () => {
     const HARD_LIMIT = 100
 
     const {
-        input, setInput, loading, editingIndex, setEditingIndex, editValue, setEditValue,
+        input, setInput, loading, streaming, editingIndex, setEditingIndex, editValue, setEditValue,
         handleSend, handleRetry, handleAbort
     } = useChatMessages({
         messages, setMessages, sessionId, repoUrl, repoIngested, setRepoIngested, setRepoUrl,
@@ -246,6 +246,7 @@ const Chat = () => {
                         handleMicClick={handleMicClick}
                         loading={loading}
                         previewFile={previewFile}
+                        streaming={streaming}
                     />
                 )}
 

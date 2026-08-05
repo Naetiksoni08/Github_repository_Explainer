@@ -18,8 +18,10 @@ interface ChatInputProps {
     interimText: string
     handleMicClick: () => void
     loading: boolean
+    streaming: boolean
     previewFile: any
 }
+
 
 const ChatInput = ({
     textareaRef,
@@ -38,8 +40,12 @@ const ChatInput = ({
     interimText,
     handleMicClick,
     loading,
+    streaming, 
     previewFile
 }: ChatInputProps) => {
+
+    const isBusy = loading || streaming   
+
     return (
         <div className="input-area">
             {pastedFiles.length > 0 && (
@@ -103,15 +109,15 @@ const ChatInput = ({
                     >
                         <FiMic size={20} />
                     </button>
+
                     <button
-                        onClick={loading ? handleAbort : () => handleSend()}
-                        disabled={isHardLimit && !loading}
+                        onClick={isBusy ? handleAbort : () => handleSend()}
+                        disabled={isHardLimit && !isBusy}
                         style={{
-                            opacity: (loading ? 0.7 : 1),
-                            cursor: (loading || isHardLimit) ? 'default' : 'pointer'
+                            opacity: (isBusy ? 0.7 : 1),
                         }}
                     >
-                        {loading ? <FiSquare size={16} /> : <FiSend size={18} />}
+                        {isBusy ? <FiSquare size={16} /> : <FiSend size={18} />}
                     </button>
                 </div>
             </div>

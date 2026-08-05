@@ -19,7 +19,7 @@ interface UseChatMessagesParams {
     hardLimit: number
 }
 
-export function useChatMessages({messages,setMessages,
+export function useChatMessages({ messages, setMessages,
     sessionId, repoUrl, repoIngested, setRepoIngested, setRepoUrl,
     fetchSession, handleIngestWithProgress, pastedFiles, buildAttachmentsText,
     clearPastedFiles, focusTextarea, hardLimit
@@ -29,6 +29,7 @@ export function useChatMessages({messages,setMessages,
     const [editingIndex, setEditingIndex] = useState<number | null>(null)
     const [editValue, setEditValue] = useState("")
     const abortControllerRef = useRef<AbortController | null>(null)
+    const [streaming, setStreaming] = useState(false)
 
     const handleSend = async (overrideText?: string) => {
         if (loading) return
@@ -79,7 +80,8 @@ export function useChatMessages({messages,setMessages,
                     await fetchSession()
                 }
             } else {
-                setMessages(prev => [...prev, { role: "assistant", content: "", timestamp: new Date().toISOString() }])
+                const assistantTimestamp = new Date().toISOString()
+                setMessages(prev => [...prev, { role: "assistant", content: "", timestamp: assistantTimestamp}])
                 abortControllerRef.current = new AbortController()
                 const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
                     method: "POST",
@@ -87,7 +89,7 @@ export function useChatMessages({messages,setMessages,
                         "Content-Type": "application/json",
                         "Authorization": `Bearer ${token}`
                     },
-                    body: JSON.stringify({ sessionId, query: currentInput, repoUrl }),
+                    body: JSON.stringify({ sessionId, query: currentInput, repoUrl, assistantTimestamp }),  
                     signal: abortControllerRef.current.signal
                 })
 
@@ -156,6 +158,7 @@ export function useChatMessages({messages,setMessages,
 
                                 if (!streamStarted) {
                                     setLoading(false)
+                                    setStreaming(true);
                                     streamStarted = true
                                 }
 
@@ -187,6 +190,7 @@ export function useChatMessages({messages,setMessages,
                     }
                     throw err
                 }
+                setStreaming(false);
             }
             await fetchSession()
         } catch (error: any) {
@@ -199,6 +203,7 @@ export function useChatMessages({messages,setMessages,
                     }
                     return updated
                 })
+                setStreaming(false)
                 return
             }
             toast.error(error?.response?.data?.message || "Something Went Wrong")
@@ -211,6 +216,7 @@ export function useChatMessages({messages,setMessages,
             })
         } finally {
             setLoading(false)
+            setStreaming(false)
         }
     }
 
@@ -232,16 +238,16 @@ export function useChatMessages({messages,setMessages,
 
     const handleAbort = async () => {
         abortControllerRef.current?.abort()
-        const lastMsg = messages[messages.length - 1]
-        if (lastMsg?.role === "assistant") {
-            try {
-                await api.patch(`/api/sessions/${sessionId}/mark-interrupted`,
-                    { timestamp: lastMsg.timestamp, content: lastMsg.content },
-                    { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-                )
-            } catch { /* ignore */ }
-        }
+        // const lastMsg = messages[messages.length - 1]
+        // if (lastMsg?.role === "assistant") {
+        //     try {
+        //         await api.patch(`/api/sessions/${sessionId}/mark-interrupted`,
+        //             { timestamp: lastMsg.timestamp, content: lastMsg.content },
+        //             { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+        //         )
+        //     } catch { /* ignore */ }
+        // }
     }
 
-    return { input, setInput, loading, editingIndex, setEditingIndex, editValue, setEditValue, handleSend, handleRetry, handleAbort }
+    return { input, setInput, loading, streaming, editingIndex, setEditingIndex, editValue, setEditValue, handleSend, handleRetry, handleAbort }
 }

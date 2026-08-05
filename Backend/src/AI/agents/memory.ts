@@ -37,16 +37,18 @@ async function AddMessage(
     sessionId: string,
     role: string,
     content: string,
-    extra: { interrupted?: boolean; errored?: boolean } = {}
+    extra: { interrupted?: boolean; errored?: boolean; timestamp?: string } = {}
 ): Promise<void> {
     const session = await SessionModel.findOne({ sessionId });
     if (!session) return;
 
+    const { timestamp, ...rest } = extra;
+
     session.messages.push({
         role,
         content,
-        timestamp: new Date().toISOString(),
-        ...extra
+        timestamp: timestamp || new Date().toISOString(),   // agar diya hai toh wahi use karo
+        ...rest
     });
 
     if (session.messages.length > 100) {

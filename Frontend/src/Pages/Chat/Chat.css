@@ -1897,3 +1897,7 @@ textarea {
     padding: 8px 14px 4px;
     font-weight: 500;
 }
+
+.input-actions button {
+    cursor: pointer;
+}

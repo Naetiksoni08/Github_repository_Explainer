@@ -7,30 +7,42 @@ import { AddMessage, getOrCreateSession } from "../AI/agents/memory";
 
 const ChatController = async (req: Request, res: Response) => {
     try {
-        const { sessionId, query } = req.body
+        const { sessionId, query, assistantTimestamp } = req.body
         const user = req.user as any;
 
-        // DB session hi authoritative source — frontend ka repoUrl trust mat karo
         const existingSession = await getOrCreateSession(sessionId, "", user.id, query);
         const repoUrl = (existingSession as any)?.repoUrl?.trim() || ""
-
-        console.log("Chat request repoUrl:", JSON.stringify(repoUrl))
 
         res.setHeader("Content-Type", "text/event-stream")
         res.setHeader("Cache-Control", "no-cache")
         res.setHeader("Connection", "keep-alive")
 
         let fullresponse = "";
+        let clientDisconnected = false;
+        let streamCompleted = false;
+
+        // ye asli fix hai — client disconnect hote hi flag set karo
+        res.on("close", () => {
+            if (!streamCompleted) {
+                clientDisconnected = true;
+            }
+        });
+
         const stream = Router(sessionId, query, repoUrl);
         for await (const chunk of stream) {
+            if (clientDisconnected) break;   // aage generate karna band karo
             fullresponse += chunk;
             res.write(`data: ${JSON.stringify(chunk)}\n\n`)
         }
+        streamCompleted = true;  
 
         await AddMessage(sessionId, "user", query)
-        await AddMessage(sessionId, "assistant", fullresponse)
-        res.write("data: [DONE]\n\n")
-        res.end();
+        await AddMessage(sessionId, "assistant", fullresponse, { interrupted: clientDisconnected,timestamp: assistantTimestamp  })
+
+        if (!clientDisconnected) {
+            res.write("data: [DONE]\n\n")
+            res.end();
+        }
     } catch (err: any) {
         if (!res.headersSent) {
             if (err?.status === 503) {
